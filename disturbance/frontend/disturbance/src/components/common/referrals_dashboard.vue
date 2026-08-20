@@ -177,10 +177,10 @@ export default {
               let tick;
               if (full.can_be_processed) {
                 tick =
-                  "<i class='bi bi-exclamation-circle-fill ms-1' style='color:#FFBF00'></i>";
+                  "<i class='bi bi-exclamation-circle-fill text-warning ms-1'></i>";
               } else {
                 tick =
-                  "<i class='bi bi-check-circle-fill' style='color:green'></i>";
+                  "<i class='bi bi-check-circle-fill text-success ms-1'></i>";
               }
               return full.proposal_lodgement_number + tick;
             },
