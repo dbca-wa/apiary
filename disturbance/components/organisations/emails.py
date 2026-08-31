@@ -6,7 +6,6 @@ from django.utils.encoding import smart_bytes
 from ledger_api_client.ledger_models import EmailUserRO as EmailUser
 
 from disturbance.components.emails.emails import TemplateEmailBase
-from disturbance.components.main.decorators import update_settings_handler
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,6 @@ class OrganisationRequestLinkNotificationEmail(TemplateEmailBase):
     txt_template = "disturbance/emails/organisation_request_link_notification.txt"
 
 
-@update_settings_handler
 def send_organisation_id_upload_email_notification(emails, organisation, org_contact, request):
     email = OrganisationIdUploadNotificationEmail()
 
@@ -128,7 +126,6 @@ def send_organisation_id_upload_email_notification(emails, organisation, org_con
     _log_org_email(msg, organisation, org_contact, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_request_link_email_notification(org_request, request, contact):
     email = OrganisationRequestLinkNotificationEmail()
 
@@ -146,7 +143,6 @@ def send_organisation_request_link_email_notification(org_request, request, cont
     _log_org_email(msg, org_request, request.user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_reinstate_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationContactReinstateNotificationEmail()
 
@@ -168,7 +164,6 @@ def send_organisation_reinstate_email_notification(linked_user, linked_by, organ
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_contact_suspend_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationContactSuspendNotificationEmail()
 
@@ -190,7 +185,6 @@ def send_organisation_contact_suspend_email_notification(linked_user, linked_by,
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_contact_decline_email_notification(user_contact, deleted_by, organisation, request):
     email = OrganisationContactDeclineNotificationEmail()
 
@@ -212,7 +206,6 @@ def send_organisation_contact_decline_email_notification(user_contact, deleted_b
     _log_org_email(msg, organisation, user_contact, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_contact_user_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationContactUserNotificationEmail()
 
@@ -234,7 +227,6 @@ def send_organisation_contact_user_email_notification(linked_user, linked_by, or
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_contact_consultant_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationContactConsultantNotificationEmail()
 
@@ -256,7 +248,6 @@ def send_organisation_contact_consultant_email_notification(linked_user, linked_
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_contact_adminuser_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationContactAdminUserNotificationEmail()
 
@@ -278,7 +269,6 @@ def send_organisation_contact_adminuser_email_notification(linked_user, linked_b
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_link_email_notification(linked_user, linked_by, organisation, request):
     email = OrganisationLinkNotificationEmail()
 
@@ -301,7 +291,6 @@ def send_organisation_link_email_notification(linked_user, linked_by, organisati
     _log_org_email(msg, organisation, linked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_request_email_notification(org_request, request, contact):
     email = OrganisationRequestNotificationEmail()
 
@@ -324,7 +313,6 @@ def send_organisation_request_email_notification(org_request, request, contact):
     _log_org_request_email(msg, org_request, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_unlink_email_notification(unlinked_user, unlinked_by, organisation, request):
     email = OrganisationUnlinkNotificationEmail()
 
@@ -346,7 +334,6 @@ def send_organisation_unlink_email_notification(unlinked_user, unlinked_by, orga
     _log_org_email(msg, organisation, unlinked_user, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_request_accept_email_notification(org_request, organisation, request):
     email = OrganisationRequestAcceptNotificationEmail()
 
@@ -362,7 +349,6 @@ def send_organisation_request_accept_email_notification(org_request, organisatio
     _log_org_email(msg, organisation, org_request.requester, sender=sender)
 
 
-@update_settings_handler
 def send_org_access_group_request_accept_email_notification(org_request, request, recipient_list):
     email = OrganisationAccessGroupRequestAcceptNotificationEmail()
 
@@ -383,7 +369,6 @@ def send_org_access_group_request_accept_email_notification(org_request, request
     _log_org_request_email(msg, org_request, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_request_decline_email_notification(org_request, request):
     email = OrganisationRequestDeclineNotificationEmail()
 
@@ -398,7 +383,6 @@ def send_organisation_request_decline_email_notification(org_request, request):
     _log_org_request_email(msg, org_request, sender=sender)
 
 
-@update_settings_handler
 def send_organisation_address_updated_email_notification(
     address_updated_by, ledger_organisation, wc_organisation, request
 ):
@@ -418,7 +402,6 @@ def send_organisation_address_updated_email_notification(
         sender = get_sender_user()
 
 
-@update_settings_handler
 def _log_org_request_email(email_message, request, sender=None):
     from disturbance.components.organisations.models import OrganisationRequestLogEntry
 
@@ -472,7 +455,6 @@ def _log_org_request_email(email_message, request, sender=None):
     return email_entry
 
 
-@update_settings_handler
 def _log_org_email(email_message, organisation, customer, sender=None):
     from disturbance.components.organisations.models import OrganisationLogEntry
 
