@@ -380,7 +380,7 @@ export default {
             } else {
               links += `<a href='/internal/proposal/${full.id}'>View</a><br/>`;
             }
-            if (full.can_user_edit) {
+            if (full.can_user_edit && full.processing_status != "Discarded") {
               links += `<a href='#${full.id}' data-discard-proposal='${full.id}'>Discard</a><br/>`;
             }
           } else {
