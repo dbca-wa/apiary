@@ -1,0 +1,74 @@
+[
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 1,
+        "fields": {
+            "name": "pdf",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 2,
+        "fields": {
+            "name": "jpg",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 3,
+        "fields": {
+            "name": "jpeg",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 4,
+        "fields": {
+            "name": "png",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 5,
+        "fields": {
+            "name": "heic",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 6,
+        "fields": {
+            "name": "docx",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 7,
+        "fields": {
+            "name": "bmp",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 8,
+        "fields": {
+            "name": "csv",
+            "model": "all"
+        }
+    },
+    {
+        "model": "disturbance.fileextensionwhitelist",
+        "pk": 9,
+        "fields": {
+            "name": "xlsx",
+            "model": "all"
+        }
+    }
+]
