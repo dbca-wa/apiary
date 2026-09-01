@@ -54,3 +54,8 @@ insert into django_migrations (id,app,name,applied) select * from  django_migrat
 - Either clear and reupload the template file (you can copy it from production using azcopy in the appsteam-tools sidecar)
 - or simply move it into the expected file path of 'media/apiary_licence_template/apiary_authority_permit_template_v3_friI1ma.docx' (file name may be slightly different)
 ```
+### 2. Install the file extension whitelist fixture
+This will allow users to upload the most common file extensions: .pdf, .jpg, .jpeg, .png, .heic, .docx, .bmp, .csv and .xlsx
+```
+./manage.py loaddata disturbance/fixtures/file_extension_whitelist.json
+```
