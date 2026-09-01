@@ -47,7 +47,7 @@ insert into django_migrations (id,app,name,applied) select * from  django_migrat
 ./manage.py migrate
 ```
 ## Step 5: Additional setup requirements (non database related)
-### 1. Make sure the licence remplate .docx file exists
+### 1. Make sure the licence template .docx file exists
 ```
 - Go into the django admin and navigate to the 'Global Settings' area.
 - Find the key 'Apiary licence template file' 
