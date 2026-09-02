@@ -15,9 +15,9 @@
             >
             <div class="col-sm-12">
               <div class="row">
-                <div class="offset-sm-2 col-sm-8">
+                <div class="col">
                   <div class="mb-3">
-                    <label class="form-label float-start" for="Name"
+                    <label class="form-label" for="Name"
                       >Reason</label
                     >
                     <select
@@ -38,14 +38,15 @@
                 </div>
               </div>
               <div class="row">
-                <div class="offset-sm-2 col-sm-8">
+                <div class="col">
                   <div class="mb-3">
-                    <label class="form-label float-start" for="Name"
+                    <label class="form-label" for="Name"
                       >Details</label
                     >
                     <textarea
                       class="form-control"
                       name="name"
+                      rows="5"
                       v-model="amendment.text"
                     ></textarea>
                   </div>
