@@ -1,7 +1,7 @@
 <template>
 <div class="container" id="internalCompliance">
     <div class="row">
-        <h3>Compliance with Requirements {{ compliance.reference }}</h3>
+        <h3>Compliance with Requirements: {{ compliance.lodgement_number }}</h3>
         <div class="col-md-3">
         <CommsLogs :comms_url="comms_url" :logs_url="logs_url" :comms_add_url="comms_add_url" :disable_add_entry="false"/>
             <div class="mb-3">
