@@ -270,12 +270,11 @@ class ComplianceViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         instance = self.get_object()
         user_id = request.data.get('user_id',None)
         user = None
-        if not user_id:
-            raise serializers.ValidationError('A user id is required')
-        try:
-            user = EmailUser.objects.get(id=user_id)
-        except EmailUser.DoesNotExist:
-            raise serializers.ValidationError('A user with the id passed in does not exist')
+        if user_id is not None:
+            try:
+                user = EmailUser.objects.get(id=user_id)
+            except EmailUser.DoesNotExist:
+                raise serializers.ValidationError('A user with the id passed in does not exist')
         instance.assign_to(user,request)
         serializer = ComplianceSerializer(instance, context={'request': request})
         return Response(serializer.data)
@@ -284,7 +283,7 @@ class ComplianceViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def unassign(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.unassign(request)
-        serializer = (instance)
+        serializer = ComplianceSerializer(instance, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True,methods=['GET',], permission_classes=[InternalCompliancePermission])
