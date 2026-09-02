@@ -130,6 +130,11 @@ class SanitiseFileMixin(SanitiseMixin, DirtyFieldsMixin):
                 _ = getattr(file_content, "size")
             except AttributeError:
                 file_content_exists = False
+            except FileNotFoundError:
+                logger.warning(
+                    "File not found for model=%s file=%s", self._meta.model_name, str(file_content)
+                )
+                file_content_exists = False
             except Exception as e:
                 logger.exception(
                     "Error reading file size for model=%s file=%s: %s", self._meta.model_name, str(file_content), e
