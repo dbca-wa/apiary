@@ -77,6 +77,7 @@ MIDDLEWARE_CLASSES += [
 
 # add the gzip middleware as the first entry in the list of middleware classes
 MIDDLEWARE_CLASSES.insert(0, "django.middleware.gzip.GZipMiddleware")
+MIDDLEWARE_CLASSES.insert(1, "disturbance.middleware.PerRequestCacheMiddleware")
 
 TEMPLATES[0]["DIRS"].append(os.path.join(BASE_DIR, "disturbance", "templates"))
 TEMPLATES[0]["DIRS"].append(os.path.join(BASE_DIR, "disturbance", "components", "ap_payments", "templates"))
@@ -284,7 +285,7 @@ LEDGER_UI_ACCOUNTS_MANAGEMENT_KEYS = []
 for am in LEDGER_UI_ACCOUNTS_MANAGEMENT:
     LEDGER_UI_ACCOUNTS_MANAGEMENT_KEYS.append(list(am.keys())[0])
 
-LEDGER_UI_CARDS_MANAGEMENT = env('LEDGER_UI_CARDS_MANAGEMENT', True)
+LEDGER_UI_CARDS_MANAGEMENT = env("LEDGER_UI_CARDS_MANAGEMENT", True)
 
 MIDDLEWARE = MIDDLEWARE_CLASSES
 

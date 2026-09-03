@@ -1,5 +1,4 @@
 import logging
-from functools import lru_cache
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -16,6 +15,8 @@ from disturbance.components.proposals.models import (
     ApiaryAssessorGroupMember,
     ApiaryReferralGroupMember,
 )
+
+from .request_cache import per_request_cache
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ def is_internal_user(user):
     )
 
 
-@lru_cache(maxsize=1024)
+@per_request_cache
 def get_cached_ledger_organisation(organisation_id):
     """
     This is safe because it's keyed by an integer.
