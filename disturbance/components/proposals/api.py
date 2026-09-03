@@ -1356,12 +1356,11 @@ class ApiaryReferralViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         instance = self.get_object()
         user_id = request.data.get("assigned_officer_id", None)
         user = None
-        if not user_id:
-            raise serializers.ValidationError("An assigned officer id is required")
-        try:
-            user = EmailUser.objects.get(id=user_id)
-        except EmailUser.DoesNotExist:
-            raise serializers.ValidationError("A user with the id passed in does not exist")
+        if user_id is not None:
+            try:
+                user = EmailUser.objects.get(id=user_id)
+            except EmailUser.DoesNotExist:
+                raise serializers.ValidationError("A user with the id passed in does not exist")
         instance.assign_officer(request, user)
         serializer = FullApiaryReferralSerializer(instance.referral, context={"request": request})
         return Response(serializer.data)
