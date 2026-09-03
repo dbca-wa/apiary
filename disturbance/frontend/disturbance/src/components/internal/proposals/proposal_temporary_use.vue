@@ -990,19 +990,12 @@ export default {
       let vm = this;
       let unassign;
       let data = {};
-      if (vm.processing_status == "With Approver") {
-        unassign =
-          vm.proposal.assigned_approver != null &&
-          vm.proposal.assigned_approver != "undefined"
-            ? false
-            : true;
+      if (vm.proposal.processing_status == "With Approver") {
+        unassign = vm.proposal.assigned_approver == null;
         data = { assessor_id: vm.proposal.assigned_approver };
       } else {
         unassign =
-          vm.proposal.assigned_officer != null &&
-          vm.proposal.assigned_officer != "undefined"
-            ? false
-            : true;
+          vm.proposal.assigned_officer == null;
         data = { assessor_id: vm.proposal.assigned_officer };
       }
       if (!unassign) {
