@@ -190,8 +190,8 @@ def send_on_site_notification_email(request_data, sender, update=False):
         try:
             recipients = ApiaryReferralGroup.objects.get(district=district).members_email
         except:
-            logger.warning('Warning sending onsite-notification email - Cannot find Apiary Referral Group for District {rd}. Sending notification to {settings.APIARY_SUPPORT_EMAIL}')
-            recipients = [settings.APIARY_SUPPORT_EMAIL]
+            logger.warning('Warning sending onsite-notification email - Cannot find Apiary Referral Group for District {rd}. Sending notification to {settings.SUPPORT_EMAIL}')
+            recipients = [settings.SUPPORT_EMAIL]
 
         return recipients
             

@@ -110,13 +110,11 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 STATIC_URL = "/static/"
 
 # Department details
-SYSTEM_NAME = env("SYSTEM_NAME", "Disturbance Approval System")
-APIARY_SYSTEM_NAME = env("APIARY_SYSTEM_NAME", "Apiary System")
+SYSTEM_NAME = env("SYSTEM_NAME", "Apiary System")
 SYSTEM_NAME_SHORT = env("SYSTEM_NAME_SHORT", "Apiary")
 SITE_PREFIX = env("SITE_PREFIX")
 SITE_DOMAIN = env("SITE_DOMAIN")
 SUPPORT_EMAIL = env("SUPPORT_EMAIL", SYSTEM_NAME_SHORT.lower() + "@" + SITE_DOMAIN).lower()
-APIARY_SUPPORT_EMAIL = env("APIARY_SUPPORT_EMAIL", SUPPORT_EMAIL).lower()
 DEP_URL = env("DEP_URL", "www." + SITE_DOMAIN)
 DEP_PHONE = env("DEP_PHONE", "(08) 9219 9000")
 DEP_PHONE_SUPPORT = env("DEP_PHONE_SUPPORT", "(08) 9219 9000")
@@ -203,8 +201,8 @@ SITE_STATUS_TRANSFERRED = (
 )
 SITE_STATUS_VACANT = "vacant"
 SITE_STATUS_DISCARDED = "discarded"
-BASE_EMAIL_TEXT = "disturbance/emails/base_email.txt"
-BASE_EMAIL_HTML = "disturbance/emails/base_email.html"
+BASE_EMAIL_TEXT = "disturbance/emails/apiary_base_email.txt"
+BASE_EMAIL_HTML = "disturbance/emails/apiary_base_email.html"
 ORGANISATION_PERMISSION_MODULE = "disturbance.permission"
 
 HTTP_HOST_FOR_TEST = "localhost:9061"
