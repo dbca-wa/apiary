@@ -492,14 +492,14 @@ class OrganisationRequestsViewSet(viewsets.ReadOnlyModelViewSet, mixins.Retrieve
         instance = self.get_object()
         user_id = request.data.get("user_id", None)
         user = None
-        if not user_id:
-            raise serializers.ValiationError("A user id is required")
-        try:
-            user = EmailUser.objects.get(id=user_id)
-        except EmailUser.DoesNotExist:
-            raise serializers.ValidationError("A user with the id passed in does not exist")
+        if user_id is not None:
+            try:
+                user = EmailUser.objects.get(id=user_id)
+            except EmailUser.DoesNotExist:
+                raise serializers.ValidationError("A user with the id passed in does not exist")
         instance.assign_to(user, request)
         serializer = OrganisationRequestSerializer(instance)
+
         return Response(serializer.data)
 
     @action(

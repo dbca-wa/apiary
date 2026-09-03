@@ -990,19 +990,12 @@ export default {
       let vm = this;
       let unassign;
       let data = {};
-      if (vm.processing_status == "With Approver") {
-        unassign =
-          vm.proposal.assigned_approver != null &&
-          vm.proposal.assigned_approver != "undefined"
-            ? false
-            : true;
+      if (vm.proposal.processing_status == "With Approver") {
+        unassign = vm.proposal.assigned_approver == null;
         data = { assessor_id: vm.proposal.assigned_approver };
       } else {
         unassign =
-          vm.proposal.assigned_officer != null &&
-          vm.proposal.assigned_officer != "undefined"
-            ? false
-            : true;
+          vm.proposal.assigned_officer == null;
         data = { assessor_id: vm.proposal.assigned_officer };
       }
       if (!unassign) {
@@ -1152,20 +1145,22 @@ export default {
     initialiseSelects: function () {
       let vm = this;
       if (!vm.initialisedSelects) {
-        $(vm.$refs.apiary_referral_groups)
-          .select2({
-            theme: "bootstrap-5",
-            allowClear: true,
-            placeholder: "Select Referral",
-          })
-          .on("select2:select", function (e) {
-            var selected = $(e.currentTarget);
-            vm.selected_referral = selected.val();
-          })
-          .on("select2:unselect", function () {
-            // var selected = $(e.currentTarget);
-            vm.selected_referral = "";
-          });
+        if (vm.$refs.apiary_referral_groups) {
+          $(vm.$refs.apiary_referral_groups)
+            .select2({
+              theme: "bootstrap-5",
+              allowClear: true,
+              placeholder: "Select Referral",
+            })
+            .on("select2:select", function (e) {
+              var selected = $(e.currentTarget);
+              vm.selected_referral = selected.val();
+            })
+            .on("select2:unselect", function () {
+              // var selected = $(e.currentTarget);
+              vm.selected_referral = "";
+            });
+        }
         vm.initialiseAssignedOfficerSelect();
         vm.initialisedSelects = true;
       }

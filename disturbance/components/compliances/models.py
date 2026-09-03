@@ -183,7 +183,7 @@ class Compliance(RevisionedMixin):
             try:
                 if self.processing_status=='discarded':
                     raise ValidationError('You cannot submit this compliance with requirements as it has been discarded.')
-                if self.processing_status == 'future' or 'due':
+                if self.processing_status == 'future' or self.processing_status == 'due':
                     self.processing_status = 'with_assessor'
                     self.customer_status = 'with_assessor'
                     self.submitter = request.user
@@ -222,11 +222,16 @@ class Compliance(RevisionedMixin):
                 raise ValidationError('Document not found')
 
 
-    def assign_to(self, user,request):
-        with transaction.atomic():
-            self.assigned_to = user
-            self.save()
-            self.log_user_action(ComplianceUserAction.ACTION_ASSIGN_TO.format(user.get_full_name()),request)
+    def assign_to(self, user, request):
+        self.assigned_to = user
+        self.save()
+
+        if user is not None:
+            user_name = user.get_full_name()
+        else:
+            user_name = 'Unassigned'
+            
+        self.log_user_action(ComplianceUserAction.ACTION_ASSIGN_TO.format(user_name),request)
 
     def unassign(self,request):
         with transaction.atomic():
