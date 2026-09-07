@@ -1,9 +1,10 @@
 import logging
 
-from django.core.exceptions import ValidationError
-from django.http import Http404
-from rest_framework import serializers
-from rest_framework.exceptions import APIException, NotAuthenticated, PermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import status
+from rest_framework.exceptions import APIException, PermissionDenied
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,7 @@ class ReferralCanNotSend(PermissionDenied):
 
 
 class ProposalReferralCannotBeSent(PermissionDenied):
-    default_detail = (
-        "Referrals can only be sent if it is in the right processing status"
-    )
+    default_detail = "Referrals can only be sent if it is in the right processing status"
     default_code = "proposal_referral_cannot_be_sent"
 
 
@@ -50,31 +49,26 @@ class InternalServerError(APIException):
 
 
 def custom_exception_handler(exc, context):
-    """Custom django rest framework exception handler
-    That makes sure all the exception responses are in json format since many django
-    exceptions are in html format
-    """
-
-    # Django rest framework errors are already in json format
-    if isinstance(
-        exc, (serializers.ValidationError, Http404, NotAuthenticated, PermissionDenied)
-    ):
-        pass
-
-    # handle django validation errors
-    elif isinstance(exc, ValidationError):
+    if isinstance(exc, DjangoValidationError):
         if hasattr(exc, "message_dict"):
-            exc = serializers.ValidationError(exc.message_dict)
+            exc = DRFValidationError(detail=exc.message_dict)
         elif hasattr(exc, "messages"):
-            exc = serializers.ValidationError(exc.messages)
-        elif hasattr(exc, "message"):
-            exc = serializers.ValidationError(exc.message)
+            exc = DRFValidationError(detail=exc.messages)
         else:
-            exc = serializers.ValidationError(str(exc))
+            exc = DRFValidationError(detail=[str(exc.message)])
 
-    else:
-        # Handle all other exceptions
-        logger.exception(str(exc))
-        exc = InternalServerError(str(exc))
+    response = exception_handler(exc, context)
 
-    return exception_handler(exc, context)
+    if response is not None:
+        if isinstance(response.data, list):
+            response.data = {"non_field_errors": [str(item) for item in response.data]}
+
+        elif isinstance(response.data, dict) and "detail" in response.data and "non_field_errors" not in response.data:
+            response.data["non_field_errors"] = [str(response.data["detail"])]
+
+        return response
+
+    logger.exception(f"Server Error: {exc}", exc_info=exc)
+    return Response(
+        {"non_field_errors": ["An unexpected server error occurred."]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    )
