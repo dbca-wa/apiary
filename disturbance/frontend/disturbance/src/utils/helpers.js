@@ -34,6 +34,109 @@ function unwrapErrorDetail(input) {
   return input;
 }
 
+/*
+
+*/
+function extractDrfMessages(data) {
+  if (data == null || data === "") return [];
+
+  // 1. If it's a string, try JSON parsing it
+  if (typeof data === "string") {
+    const trimmed = data.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        return extractDrfMessages(JSON.parse(trimmed));
+      } catch {
+        // Plain text string
+      }
+    }
+
+    return [data];
+  }
+
+  // 2. If it's an array
+  if (Array.isArray(data)) {
+    return data.flatMap((item) => extractDrfMessages(item));
+  }
+
+  // 3. If it's an object
+  if (typeof data === "object") {
+    if (data.non_field_errors) {
+      return extractDrfMessages(data.non_field_errors);
+    }
+    if (data.detail) {
+      return extractDrfMessages(data.detail);
+    }
+    if (data.message) {
+      return extractDrfMessages(data.message);
+    }
+    if (data.error) {
+      return extractDrfMessages(data.error);
+    }
+
+    // Field-level errors: { field: ["Error message"] }
+    const messages = [];
+    for (const [key, value] of Object.entries(data)) {
+      const fieldErrors = extractDrfMessages(value);
+      const fieldName = key.replace(/_/g, " ");
+      const capitalized =
+        fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+      fieldErrors.forEach((msg) => {
+        messages.push(`${capitalized}: ${msg}`);
+      });
+    }
+    return messages;
+  }
+
+  return [String(data)];
+}
+
+export async function parseFetchError(response) {
+  if (!response) {
+    return "Network error. Please check your connection.";
+  }
+
+  // Common wrapper objects (e.g. if an Error object with an attached response was passed)
+  const res = response.response || response;
+  const status = res.status;
+
+  console.log(res)
+
+  if (status === 404) return "The requested resource was not found.";
+  if (status >= 500) return "A server error occurred. Please try again later.";
+
+  let data;
+
+  // 1. If it's a Fetch Response object
+  if (typeof res.json === "function" || res instanceof Response) {
+    try {
+      // Try to read directly
+      data = await res.json();
+    } catch {
+      try {
+        // If not JSON, try text
+        data = await res.text();
+      } catch {
+        // If stream was already read, try reading from properties if your wrapper cached it
+        data = res._bodyInit || res.data || res.body;
+      }
+    }
+  } else {
+    // 2. If it's already a parsed object / data payload
+    data = res.data || res.body || res;
+  }
+
+  const messages = extractDrfMessages(data);
+
+  if (messages.length > 0) {
+    return messages.join("\n");
+  }
+
+  // Fallback if the body was completely empty
+  return res.statusText || "An unexpected error occurred.";
+}
+
 export default {
   truncate(text, { length = 30, omission = "...", separator } = {}) {
     if (text == null) return "";
@@ -134,6 +237,59 @@ export default {
     }
     console.log(error_str);
     return error_str;
+  },
+
+  /**
+   * Universal error parser for our vue 3 / fetch setup.
+   * I am leaving the old `apiError` and `apiVueResourceError` functions in place for now for backward compatibility.
+   */
+  parseApiError: async function (response) {
+    // Handle network drops or non-response errors
+    if (!response) {
+      return "Network error. Please check your connection.";
+    }
+
+    const status = response.status;
+
+    // Standard status code fallbacks
+    if (status === 404) return "The requested resource was not found.";
+    if (status === 401) return "Your session has expired. Please log in again.";
+    if (status === 403)
+      return "You do not have permission to perform this action.";
+    if (status >= 500)
+      return "A server error occurred. Please try again later.";
+
+    // Extract body
+    let data;
+    try {
+      // Works with Fetch Response
+      if (typeof response.clone === "function") {
+        data = await response.clone().json();
+      } else if (typeof response.json === "function") {
+        data = await response.json();
+      } else if (response.data) {
+        // Axios response
+        data = response.data;
+      } else if (response.responseText) {
+        // XMLHttpRequest
+        data = JSON.parse(response.responseText);
+      }
+    } catch {
+      // If JSON parsing fails, fallback to text
+      try {
+        data =
+          typeof response.text === "function"
+            ? await response.text()
+            : response.statusText;
+      } catch {
+        data = "An unexpected error occurred.";
+      }
+    }
+
+    const errors = extractDrfMessages(data);
+    return errors.length > 0
+      ? errors.join("\n")
+      : "An unexpected error occurred.";
   },
 
   goBack: function (vm) {
