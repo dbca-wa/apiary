@@ -28,10 +28,7 @@
                       >Availability</label
                     >
                     <div class="col-sm-3">
-                      <select
-                        class="form-select"
-                        ref="filterAvailability"
-                      >
+                      <select class="form-select" ref="filterAvailability">
                         <option value="">All</option>
                         <option value="available">Available</option>
                         <option value="unavailable">Unavailable</option>
@@ -105,21 +102,28 @@
                   <transition v-if="optionalLayers.length">
                     <div
                       div
-                      class="layer_options"
+                      class="layer_options overflow-y-auto"
                       v-show="hover"
                       @mouseleave="hover = false"
+                      style="height: 350px"
                     >
-                      <div v-for="layer in optionalLayers" :key="layer.ol_uid">
+                      <div
+                        v-for="layer in optionalLayers"
+                        :key="layer.ol_uid"
+                        class="form-check"
+                      >
                         <input
                           type="checkbox"
                           :id="layer.ol_uid"
                           :checked="layer.values_.visible"
                           @change="changeLayerVisibility(layer)"
-                          class="layer_option"
+                          class="form-check-input layer_option"
                         />
-                        <label :for="layer.ol_uid" class="layer_option">{{
-                          layer.get("title")
-                        }}</label>
+                        <label
+                          :for="layer.ol_uid"
+                          class="form-check-label fw-normal"
+                          >{{ layer.get("title") }}</label
+                        >
                       </div>
                     </div>
                   </transition>
@@ -1749,8 +1753,8 @@ export default {
 }
 .basemap-button {
   position: absolute;
-  bottom: 25px;
-  right: 10px;
+  bottom: 20px;
+  right: 20px;
   z-index: 400;
   -moz-box-shadow: 3px 3px 3px #777;
   -webkit-box-shadow: 3px 3px 3px #777;
@@ -1768,8 +1772,8 @@ export default {
   filter: brightness(0.9);
 }
 .basemap-button:active {
-  bottom: 24px;
-  right: 9px;
+  bottom: 20px;
+  right: 20px;
   -moz-box-shadow: 2px 2px 2px #555;
   -webkit-box-shadow: 2px 2px 2px #555;
   box-shadow: 2px 2px 2px #555;
@@ -1780,7 +1784,7 @@ export default {
 .optional-layers-wrapper {
   position: absolute;
   top: 70px;
-  left: 10px;
+  left: 21px;
 }
 .optional-layers-button {
   position: relative;
@@ -1808,6 +1812,7 @@ export default {
         */
   padding: 0.5em;
   border: 3px solid rgba(5, 5, 5, 0.1);
+  margin-left: 38px;
 }
 .ol-popup {
   position: absolute;

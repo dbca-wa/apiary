@@ -146,18 +146,25 @@
                 class="layer_options"
                 v-show="hover"
                 @mouseleave="hover = false"
+                style="height: 350px"
               >
-                <div v-for="layer in optionalLayers" :key="layer.ol_uid">
+                <div
+                  v-for="layer in optionalLayers"
+                  :key="layer.ol_uid"
+                  class="form-check"
+                >
                   <input
                     type="checkbox"
                     :id="layer.ol_uid"
                     :checked="layer.values_.visible"
                     @change="changeLayerVisibility(layer)"
-                    class="layer_option"
+                    class="form-check-input layer_option"
                   />
-                  <label :for="layer.ol_uid" class="layer_option">{{
-                    layer.get("title")
-                  }}</label>
+                  <label
+                    :for="layer.ol_uid"
+                    class="form-check-label fw-normal"
+                    >{{ layer.get("title") }}</label
+                  >
                 </div>
               </div>
             </transition>
@@ -1316,12 +1323,10 @@ export default {
       // let geometry = feature.getGeometry()
       // let coord = geometry.getCoordinates()
       // let view = this.map.getView()
-      this.map
-        .getView()
-        .animate({
-          zoom: 16,
-          center: feature["values_"]["geometry"]["flatCoordinates"],
-        });
+      this.map.getView().animate({
+        zoom: 16,
+        center: feature["values_"]["geometry"]["flatCoordinates"],
+      });
       //this.showPopup(feature)
     },
     uuidv4: function () {
@@ -2390,8 +2395,8 @@ canvas {
 }
 #basemap-button {
   position: absolute;
-  bottom: 25px;
-  right: 10px;
+  bottom: 20px;
+  right: 30px;
   z-index: 400;
   -moz-box-shadow: 3px 3px 3px #777;
   -webkit-box-shadow: 3px 3px 3px #777;
@@ -2412,8 +2417,8 @@ canvas {
   filter: brightness(0.9);
 }
 #basemap-button:active {
-  bottom: 24px;
-  right: 9px;
+  bottom: 20px;
+  right: 30px;
   -moz-box-shadow: 2px 2px 2px #555;
   -webkit-box-shadow: 2px 2px 2px #555;
   box-shadow: 2px 2px 2px #555;
@@ -2424,7 +2429,7 @@ canvas {
 .optional-layers-wrapper {
   position: absolute;
   top: 70px;
-  left: 10px;
+  left: 21px;
 }
 .optional-layers-button {
   padding: 4px;
@@ -2453,6 +2458,7 @@ canvas {
         */
   padding: 0.5em;
   border: 3px solid rgba(5, 5, 5, 0.1);
+  margin-left: 38px;
 }
 .custom-mouse-position {
   position: absolute;
