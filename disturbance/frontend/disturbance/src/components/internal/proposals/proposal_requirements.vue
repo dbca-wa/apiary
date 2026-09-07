@@ -178,13 +178,18 @@ export default {
           }
         },
         drawCallback: function () {
-          $(vm.$refs.requirements_datatable.table)
-            .find("tr:last .dtMoveDown")
-            .remove();
-          $(vm.$refs.requirements_datatable.table)
-            .children("tbody")
-            .find("tr:first .dtMoveUp")
-            .remove();
+          if (
+            vm.$refs.requirements_datatable &&
+            vm.$refs.requirements_datatable.table
+          ) {
+            $(vm.$refs.requirements_datatable.table)
+              .find("tr:last .dtMoveDown")
+              .remove();
+            $(vm.$refs.requirements_datatable.table)
+              .children("tbody")
+              .find("tr:first .dtMoveUp")
+              .remove();
+          }
 
           // Remove previous binding before adding it
           $(".dtMoveUp").unbind("click");
