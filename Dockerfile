@@ -93,7 +93,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CONTAINER_IMAGE_NAME=${IMAGE_NAME}
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y ca-certificates tzdata wget && \
+    apt-get install --no-install-recommends -y ca-certificates run-one tzdata wget && \
     apt-get remove --purge -y binutils rust-coreutils git mtr patch vim 2>/dev/null || true && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
