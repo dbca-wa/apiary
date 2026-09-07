@@ -693,19 +693,13 @@ export default {
             });
           }
         },
-        (error) => {
+        async (error) => {
           this.newOrg.detailsChecked = false;
-          let error_msg = "<br/>";
-          for (var key in error.body) {
-            if (key === "non_field_errors") {
-              error_msg += error.body[key];
-            } else {
-              error_msg += key + ": " + error.body[key];
-            }
-          }
+          const errorMessage = await parseFetchError(error);
           swal.fire({
             title: "Checking Organisation",
-            text: "There was an error checking this organisation." + error_msg,
+            text:
+              "There was an error checking this organisation." + errorMessage,
             icon: "error",
             customClass: {
               confirmButton: "btn btn-primary",
