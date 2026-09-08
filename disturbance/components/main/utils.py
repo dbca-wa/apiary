@@ -425,21 +425,6 @@ def get_feature_in_wa_coastline(wkb_geometry, smoothed):
         return None
 
 
-def get_feature_in_wa_coastline_kmi(wkb_geometry):
-    try:
-        URL = "https://kmi.dpaw.wa.gov.au/geoserver/public/wms"
-        coords = {"lng": wkb_geometry.x, "lat": wkb_geometry.y}
-        PARAMS = _get_params("public:wa_coast_pub", coords)
-        res = requests.get(url=URL, params=PARAMS)
-        geo_json = res.json()
-        feature = None
-        if len(geo_json["features"]) > 0:
-            feature = geo_json["features"][0]
-        return feature
-    except:
-        return None
-
-
 def get_tenure(wkb_geometry):
     try:
         URL = "https://kmi.dpaw.wa.gov.au/geoserver/public/wms"
