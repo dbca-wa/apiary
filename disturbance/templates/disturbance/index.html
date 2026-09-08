@@ -15,22 +15,22 @@
         <div class="row">
             <div class="col-md-8">
                 <h2>
-                    Welcome to {{ DISPLAYED_SYSTEM_NAME }} 
+                    Welcome to {{ SYSTEM_NAME }} 
                 </h2>
             </div>
             <div class="col-md-4">
                 {% if not request.user.is_authenticated %}
                     <div class="card">
                         <div class="card-header">
-                            Access to {{ DISPLAYED_SYSTEM_NAME }}
+                            Access to {{ SYSTEM_NAME }}
                         </div>
                         <div class="card-body">
                             <h4>
-                               {{ DISPLAYED_SYSTEM_NAME }} Password-less Logins
+                               {{ SYSTEM_NAME }} Password-less Logins
                             </h4>
                             <p class="card-text">
                                 At the {{ department_name }}, we employ a password-less authentication system, meaning you never need to remember
-                                a password. When you need to login to a site, such as {{ DISPLAYED_SYSTEM_NAME }}, simply enter your email and an
+                                a password. When you need to login to a site, such as {{ SYSTEM_NAME }}, simply enter your email and an
                                 authentication code will be sent to your registered email address. From there, enter the code on screen to complete the login process.
                             </p>
                             <a class="btn btn-primary" href="{{ BASE_URL }}ssologin">Login</a>

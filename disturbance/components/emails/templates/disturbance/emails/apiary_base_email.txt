@@ -15,7 +15,7 @@ Apiary Section
 
 {% block reply_statement %}
 Please do not reply directly to this email. Should you need to contact the {{settings.DEP_NAME}},
-please contact the Commercial Buisness Unit or the Apiary administrator on {{ settings.APIARY_SUPPORT_EMAIL }}.
+please contact the Commercial Buisness Unit or the Apiary administrator on {{ settings.SUPPORT_EMAIL }}.
 This is an automated email, please don't reply to this.
 {% endblock %}
 

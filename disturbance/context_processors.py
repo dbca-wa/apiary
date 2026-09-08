@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 
 def apiary_url(request):
     PUBLIC_URL = 'https://apiary.dbca.wa.gov.au/'
-    displayed_system_name = settings.APIARY_SYSTEM_NAME
-    support_email = settings.APIARY_SUPPORT_EMAIL
 
     is_payment_officer = is_payment_admin(request.user)
     lt = ledger_api_utils.get_ledger_totals()
@@ -35,8 +33,7 @@ def apiary_url(request):
         'TEMPLATE_GROUP': get_template_group(request), # Bad naming since we also have TEMPLATE_GROUP in settings however this one which always returns 'apiary'
         # may still be used in some places
         'APPLICATION_GROUP': 'apiary',
-        'DISPLAYED_SYSTEM_NAME': displayed_system_name,
-        'SUPPORT_EMAIL': support_email,
+        'SUPPORT_EMAIL': settings.SUPPORT_EMAIL,
         'is_payment_admin': is_payment_officer,
         'build_tag': settings.BUILD_TAG,
         'KB_SERVER_URL': KB_SERVER_URL,
