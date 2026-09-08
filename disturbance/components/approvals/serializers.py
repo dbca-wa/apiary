@@ -120,17 +120,6 @@ class ApprovalSerializerForLicenceDoc(serializers.ModelSerializer):
         """Return the Apiary Licenses (where licensed_sites=False)"""
         ret_array = []
 
-        # if not approval.current_proposal.approval:
-        #     apiary_site_on_proposals = approval.current_proposal.proposal_apiary.get_relations()
-        #     for relation in apiary_site_on_proposals:
-        #         serializer = ApiarySiteOnProposalLicenceDocSerializer(relation)
-        #         ret_array.append(serializer.data)
-        # else:
-        #     apiary_site_on_approvals = approval.get_relations()
-        #     for relation in apiary_site_on_approvals:
-        #         serializer = ApiarySiteOnApprovalLicenceDocSerializer(relation)
-        #         ret_array.append(serializer.data)
-
         apiary_site_on_approvals = approval.get_relations()
         for relation in apiary_site_on_approvals.order_by("apiary_site_id"):
             if not relation.licensed_site:
