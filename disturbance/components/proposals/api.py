@@ -324,7 +324,7 @@ class ProposalPaginatedViewSet(viewsets.ReadOnlyModelViewSet):
         http://localhost:8499/api/proposal_paginated/referrals_internal/?format=datatables&draw=1&length=2
         """
         template_group = get_template_group(request)
-        
+
         qs = (
             Referral.objects.filter(apiary_referral__referral_group__members=request.user)
             if is_internal(self.request)
@@ -631,12 +631,14 @@ class ApiarySiteViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     @basic_exception_handler
     def make_vacant(self, request, pk=None):
         instance = self.get_object()
-        try:
-            apiary_site_on_approval = instance.latest_approval_link
-            apiary_site_on_approval.site_status = "vacant"
-            apiary_site_on_approval.save()
-        except Exception as e:
-            raise serializers.ValidationError("Invalid Request" + str(e))
+
+        if not hasattr(instance, "latest_approval_link") or instance.latest_approval_link is None:
+            raise serializers.ValidationError("This site can not be made vacant as it has no latest approval")
+
+        apiary_site_on_approval = instance.latest_approval_link
+        apiary_site_on_approval.site_status = "vacant"
+        apiary_site_on_approval.save()
+
         instance.save()
         data = annotate_apiary_site_on_approval_geometry(ApiarySiteOnApproval.objects.filter(id=instance.id))
         return Response(data[0] if len(data) > 0 else {})
