@@ -176,11 +176,11 @@ export default {
             mRender: function (data, type, full) {
               let tick;
               if (full.can_be_processed) {
-                // tick = "<span class='fa-stack'><i class='fa fa-circle fa-stack-1x' style='color:yellow'></i><i class='fa fa-exclamation fa-stack-1x' style=''></i></span>";
                 tick =
-                  "<i class='fa fa-exclamation-circle' style='color:#FFBF00'></i>";
+                  "<i class='bi bi-exclamation-circle-fill text-warning ms-1'></i>";
               } else {
-                tick = "<i class='fa fa-check-circle' style='color:green'></i>";
+                tick =
+                  "<i class='bi bi-check-circle-fill text-success ms-1'></i>";
               }
               return full.proposal_lodgement_number + tick;
             },
