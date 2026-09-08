@@ -222,6 +222,7 @@ import Cluster from "ol/source/Cluster";
 import "select2/dist/css/select2.min.css";
 import Awesomplete from "awesomplete";
 import { api_endpoints } from "@/utils/hooks";
+import { parseFetchError } from "@/utils/helpers";
 import $ from "jquery";
 
 export default {
@@ -840,11 +841,12 @@ export default {
                     vm.removeApiarySiteById(apiary_site_id);
                   });
               })
-              .catch((error) => {
+              .catch(async (error) => {
                 console.log(error);
+                const errorMessage = await parseFetchError(error);
                 swal.fire({
-                  title: "Submit Error",
-                  text: error,
+                  title: "Error Making Site Vacant",
+                  text: errorMessage,
                   icon: "error",
                   customClass: {
                     confirmButton: "btn btn-primary",
