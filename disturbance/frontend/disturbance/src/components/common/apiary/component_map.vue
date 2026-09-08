@@ -11,11 +11,13 @@
         </div>
         <div class="basemap-button">
           <img
+            v-show="currentBasemap === 'osm'"
             id="basemap_sat"
             :src="satelliteIconUrl"
             @click="setBaseLayer('sat')"
           />
           <img
+            v-show="currentBasemap === 'sat'"
             id="basemap_osm"
             :src="mapIconUrl"
             @click="setBaseLayer('osm')"
@@ -180,6 +182,7 @@ export default {
       overlay: null,
       content_element: null,
       modifyInProgressList: [],
+      currentBasemap: "osm",
       tileLayerOsm: null,
       tileLayerSat: null,
       optionalLayers: [],
@@ -206,6 +209,8 @@ export default {
     let vm = this;
 
     vm.initMap();
+    console.log("component_map.vue: Setting base layer");
+
     vm.setBaseLayer("osm");
     vm.set_mode("layer");
     vm.addOptionalLayers();
@@ -465,13 +470,11 @@ export default {
       if (selected_layer_name == "sat") {
         vm.tileLayerOsm.setVisible(false);
         vm.tileLayerSat.setVisible(true);
-        $("#basemap_sat").hide();
-        $("#basemap_osm").show();
+        vm.currentBasemap = "sat";
       } else {
         vm.tileLayerOsm.setVisible(true);
         vm.tileLayerSat.setVisible(false);
-        $("#basemap_osm").hide();
-        $("#basemap_sat").show();
+        vm.currentBasemap = "osm";
       }
     },
     closePopup: function () {
@@ -1019,11 +1022,6 @@ export default {
   border-radius: 2px;
   cursor: auto;
   min-width: max-content;
-  /*
-        box-shadow: 3px 3px 3px #777;
-        -moz-filter: brightness(1.0);
-        -webkit-filter: brightness(1.0);
-        */
   padding: 0.5em;
   border: 3px solid rgba(5, 5, 5, 0.1);
   margin-left: 38px;
@@ -1032,8 +1030,6 @@ export default {
   position: absolute;
   min-width: 95px;
   background-color: white;
-  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
   padding: 2px;
   border-radius: 4px;
   border: 1px solid #ccc;
@@ -1075,7 +1071,6 @@ export default {
   position: absolute;
   left: 1px;
   top: -11px;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
 }
 .popup-wrapper {
   padding: 0.25em;

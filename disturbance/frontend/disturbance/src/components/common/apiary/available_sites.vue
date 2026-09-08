@@ -16,7 +16,7 @@
               >
                 <div
                   v-show="select2Applied"
-                  class="bg-light border rounded p-3 shadow-sm mb-3"
+                  class="bg-light border rounded p-3 mb-3"
                   id="filters_container"
                 >
                   <div class="row" id="filters_parent">
@@ -70,11 +70,13 @@
               </div>
               <div class="basemap-button">
                 <img
+                  v-show="currentBasemap === 'osm'"
                   id="basemap_sat"
                   :src="satelliteIconUrl"
                   @click="setBaseLayer('sat')"
                 />
                 <img
+                  v-show="currentBasemap === 'sat'"
                   id="basemap_osm"
                   :src="mapIconUrl"
                   @click="setBaseLayer('osm')"
@@ -254,6 +256,7 @@ export default {
       overlay: null,
       content_element: null,
       modifyInProgressList: [],
+      currentBasemap: "osm",
       tileLayerOsm: null,
       tileLayerSat: null,
       optionalLayers: [],
@@ -887,13 +890,11 @@ export default {
       if (selected_layer_name == "sat") {
         vm.tileLayerOsm.setVisible(false);
         vm.tileLayerSat.setVisible(true);
-        $("#basemap_sat").hide();
-        $("#basemap_osm").show();
+        vm.currentBasemap = "sat";
       } else {
         vm.tileLayerOsm.setVisible(true);
         vm.tileLayerSat.setVisible(false);
-        $("#basemap_osm").hide();
-        $("#basemap_sat").show();
+        vm.currentBasemap = "osm";
       }
     },
     set_mode: function (mode) {
@@ -1756,9 +1757,6 @@ export default {
   bottom: 20px;
   right: 20px;
   z-index: 400;
-  -moz-box-shadow: 3px 3px 3px #777;
-  -webkit-box-shadow: 3px 3px 3px #777;
-  box-shadow: 3px 3px 3px #777;
   -moz-filter: brightness(1);
   -webkit-filter: brightness(1);
   filter: brightness(1);
@@ -1774,9 +1772,6 @@ export default {
 .basemap-button:active {
   bottom: 20px;
   right: 20px;
-  -moz-box-shadow: 2px 2px 2px #555;
-  -webkit-box-shadow: 2px 2px 2px #555;
-  box-shadow: 2px 2px 2px #555;
   -moz-filter: brightness(0.8);
   -webkit-filter: brightness(0.8);
   filter: brightness(0.8);
@@ -1805,11 +1800,6 @@ export default {
   border-radius: 2px;
   cursor: auto;
   min-width: max-content;
-  /*
-        box-shadow: 3px 3px 3px #777;
-        -moz-filter: brightness(1.0);
-        -webkit-filter: brightness(1.0);
-        */
   padding: 0.5em;
   border: 3px solid rgba(5, 5, 5, 0.1);
   margin-left: 38px;
@@ -1818,8 +1808,6 @@ export default {
   position: absolute;
   min-width: 95px;
   background-color: white;
-  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
   padding: 2px;
   border-radius: 4px;
   border: 1px solid #ccc;
@@ -1862,7 +1850,6 @@ export default {
   position: absolute;
   left: 1px;
   top: -11px;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
 }
 .popup-wrapper {
   padding: 0.25em;
