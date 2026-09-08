@@ -972,7 +972,7 @@ class ProposalApiaryViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
         apiary_site_on_proposals = ApiarySiteOnProposal.objects.filter(
             apiary_site__in=proposal_apiary.apiary_sites.all()
-        )
+        ).distinct("apiary_site")
 
         draft_apiary_sites = apiary_site_on_proposals.filter(site_status=SITE_STATUS_DRAFT)
         non_draft_apiary_sites = apiary_site_on_proposals.exclude(site_status=SITE_STATUS_DRAFT)
