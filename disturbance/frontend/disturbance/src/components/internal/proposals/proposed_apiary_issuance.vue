@@ -194,8 +194,8 @@
                     <textarea
                       name="approval_details"
                       class="form-control"
-                      style="width: 70%"
                       v-model="approval.details"
+                      rows="10"
                     ></textarea>
                   </div>
                 </div>
