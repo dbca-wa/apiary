@@ -155,9 +155,13 @@ export default {
                 ],
                 processing: true,
                 drawCallback: function () {
-                    $(vm.$refs.originating_requirements_datatable.table).find('tr:last .dtMoveDown').remove();
-                    $(vm.$refs.originating_requirements_datatable.table).children('tbody').find('tr:first .dtMoveUp').remove();
-
+                    if (
+                        vm.$refs.originating_requirements_datatable &&
+                        vm.$refs.originating_requirements_datatable.table
+                    ) {                    
+                        $(vm.$refs.originating_requirements_datatable.table).find('tr:last .dtMoveDown').remove();
+                        $(vm.$refs.originating_requirements_datatable.table).children('tbody').find('tr:first .dtMoveUp').remove();
+                    }
                     // Remove previous binding before adding it
                     $('.dtMoveUp').unbind('click');
                     $('.dtMoveDown').unbind('click');
