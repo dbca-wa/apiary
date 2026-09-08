@@ -131,9 +131,14 @@
               </div>
             </div>
             <div class="button_row">
-              <span class="view_all_button" @click="displayAllFeatures"
-                >View All On Map</span
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                @click.stop="displayAllFeatures"
               >
+                <i class="bi bi-zoom-out pe-1"></i>
+                Zoom and Pan to Show All Points
+              </button>
             </div>
           </div>
           <div :id="popup_id" class="ol-popup">
@@ -1399,7 +1404,7 @@ export default {
         if (["denied", "not_to_be_reissued"].includes(a_status)) {
           let display_text = "Make Vacant";
           let ret =
-            '<a href="#' +
+            '<a href="#" class="btn btn-primary btn-sm my-0" role="button"' +
             feature.id_ +
             '" data-make-vacant="' +
             feature.id_ +
