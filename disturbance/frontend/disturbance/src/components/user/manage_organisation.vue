@@ -493,6 +493,7 @@
 import { v4 as uuid } from "uuid";
 import $ from "jquery";
 import { api_endpoints, helpers, fetch_util } from "@/utils/hooks";
+import { parseFetchError } from "@/utils/helpers";
 import FormSection from "@/components/forms/section_toggle.vue";
 
 export default {
@@ -692,19 +693,13 @@ export default {
             });
           }
         },
-        (error) => {
+        async (error) => {
           this.newOrg.detailsChecked = false;
-          let error_msg = "<br/>";
-          for (var key in error.body) {
-            if (key === "non_field_errors") {
-              error_msg += error.body[key];
-            } else {
-              error_msg += key + ": " + error.body[key];
-            }
-          }
+          const errorMessage = await parseFetchError(error);
           swal.fire({
             title: "Checking Organisation",
-            text: "There was an error checking this organisation." + error_msg,
+            text:
+              "There was an error checking this organisation." + errorMessage,
             icon: "error",
             customClass: {
               confirmButton: "btn btn-primary",
@@ -839,19 +834,11 @@ export default {
                 }
               });
           },
-          (error) => {
+          async (error) => {
             vm.registeringOrg = false;
-            let error_msg = "<br/>";
-            for (var key in error.body) {
-              if (key === "non_field_errors") {
-                error_msg += error.body[key] + "<br/>";
-              } else {
-                error_msg += key + ": " + error.body[key] + "<br/>";
-              }
-            }
             swal.fire({
               title: "Error submitting organisation request",
-              text: error_msg,
+              text: await parseFetchError(error),
               icon: "error",
               customClass: {
                 confirmButton: "btn btn-primary",
@@ -935,19 +922,11 @@ export default {
                 }
               });
           },
-          (error) => {
+          async (error) => {
             vm.registeringOrg = false;
-            let error_msg = "<br/>";
-            for (var key in error.body) {
-              if (key === "non_field_errors") {
-                error_msg += error.body[key] + "<br/>";
-              } else {
-                error_msg += key + ": " + error.body[key] + "<br/>";
-              }
-            }
             swal.fire({
               title: "Error submitting organisation request",
-              text: error_msg,
+              text: await parseFetchError(error),
               icon: "error",
               customClass: {
                 confirmButton: "btn btn-primary",
@@ -989,16 +968,12 @@ export default {
               window.location.reload(true);
             });
         },
-        (error) => {
+        async (error) => {
           console.log(error);
           vm.registeringOrg = false;
-          let error_msg = "<br/>";
-          for (var key in error.body) {
-            error_msg += key + ": " + error.body[key] + "<br/>";
-          }
           swal.fire({
             title: "Error submitting organisation request",
-            text: error_msg,
+            text: await parseFetchError(error),
             icon: "error",
             customClass: {
               confirmButton: "btn btn-primary",

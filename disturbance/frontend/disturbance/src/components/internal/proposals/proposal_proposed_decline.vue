@@ -138,7 +138,6 @@ export default {
                     vm.decliningProposal = false;
                     try {
                     const errData = await error.json();
-                    //vm.errorString = helpers.apiVueResourceError(errData);
                     vm.errorString = errData;
                     } catch {
                     vm.errorString = 'An unexpected error occurred.';

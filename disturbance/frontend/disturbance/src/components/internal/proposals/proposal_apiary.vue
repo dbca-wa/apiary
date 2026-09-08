@@ -1551,7 +1551,6 @@ export default {
                     : {};
                 swal.fire({
                   title: "Proposal Error",
-                  //text: helpers.apiVueResourceError(error),
                   text: error,
                   icon: "error",
                   customClass: {
@@ -1610,7 +1609,6 @@ export default {
                 : {};
             swal.fire({
               title: "Proposal Error",
-              //text: helpers.apiVueResourceError(error),
               text: error,
               icon: "error",
               customClass: {
@@ -1656,7 +1654,6 @@ export default {
                 : {};
             swal.fire({
               title: "Proposal Error",
-              //text: helpers.apiVueResourceError(error),
               text: error,
               icon: "error",
               customClass: {
@@ -1808,7 +1805,6 @@ export default {
               console.log(error);
               swal.fire({
                 title: "Referral Error",
-                //text: helpers.apiVueResourceError(error),
                 text: error,
                 icon: "error",
                 customClass: {

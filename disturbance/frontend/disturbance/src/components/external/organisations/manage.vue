@@ -211,6 +211,7 @@
 <script>
 import { v4 as uuid } from "uuid";
 import { api_endpoints, helpers, fetch_util, constants } from "@/utils/hooks";
+import { parseFetchError } from "@/utils/helpers";
 import datatable from "@vue-utils/datatable.vue";
 import utils from "../utils.js";
 import api from "../api.js";
@@ -1096,20 +1097,15 @@ export default {
                             },
                           );
                       },
-                      (error) => {
-                        let error_msg = "<br/>";
-                        for (var key in error.body) {
-                          if (key == "non_field_errors") {
-                            error_msg += error.body[key] + "<br/>";
-                          }
-                        }
+                      async (error) => {
+                        const errorMessage = await parseFetchError(error);
                         swal.fire({
                           title: "Suspend User",
                           text:
                             "There was an error suspending " +
                             name +
                             " as a User." +
-                            error_msg,
+                            errorMessage,
                           icon: "error",
                           customClass: {
                             confirmButton: "btn btn-primary",
@@ -1534,20 +1530,15 @@ export default {
                       },
                     );
                 },
-                (error) => {
-                  let error_msg = "<br/>";
-                  for (var key in error.body) {
-                    if (key == "non_field_errors") {
-                      error_msg += error.body[key] + "<br/>";
-                    }
-                  }
+                async (error) => {
+                  const errorMessage = await parseFetchError(error);
                   swal.fire({
                     title: "Unlink User",
                     text:
                       "There was an error unlinking " +
                       person.name +
                       " from the Organisation." +
-                      error_msg,
+                      errorMessage,
                     icon: "error",
                     customClass: {
                       confirmButton: "btn btn-primary",

@@ -240,7 +240,6 @@ export default {
                     let errorText = 'An unexpected error occurred.';
                     try {
                         const errData = await err.json();
-                        // errorText = helpers.apiVueResourceError(errData);
                         errorText = errData;
                     } catch { console.log('Error parsing error response'); }
                     
