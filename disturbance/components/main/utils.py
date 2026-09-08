@@ -425,33 +425,34 @@ def get_feature_in_wa_coastline(wkb_geometry, smoothed):
         return None
 
 
-def get_feature_in_wa_coastline_kmi(wkb_geometry):
-    try:
-        URL = "https://kmi.dpaw.wa.gov.au/geoserver/public/wms"
-        coords = {"lng": wkb_geometry.x, "lat": wkb_geometry.y}
-        PARAMS = _get_params("public:wa_coast_pub", coords)
-        res = requests.get(url=URL, params=PARAMS)
-        geo_json = res.json()
-        feature = None
-        if len(geo_json["features"]) > 0:
-            feature = geo_json["features"][0]
-        return feature
-    except:
-        return None
-
-
 def get_tenure(wkb_geometry):
     try:
-        URL = "https://kmi.dpaw.wa.gov.au/geoserver/public/wms"
-        coords = {"lng": wkb_geometry.x, "lat": wkb_geometry.y}
-        PARAMS = _get_params("public:dpaw_lands_and_waters", coords)
-        res = requests.get(url=URL, params=PARAMS)
+        # 1. Use the new validated endpoint URL setting
+        url = settings.KB_TENURE_GEOSERVER_URL
+        layer_name = settings.KB_DBCA_LEGISLATED_TENURE_LAYER
+
+        # 2. Extract coordinates into a list/tuple format requested by _get_params layout
+        coords_tuple = (wkb_geometry.x, wkb_geometry.y)
+        params = _get_params(layer_name, coords_tuple)
+
+        # 3. Fire request to the updated /ows gateway
+        res = requests.get(url=url, params=params, timeout=10)
+        res.raise_for_status()
+
         geo_json = res.json()
         tenure_name = ""
-        if len(geo_json["features"]) > 0:
-            tenure_name = geo_json["features"][0]["properties"]["tenure"]
+
+        # 4. Extract property data using the validated 'LEG_TENURE' uppercase key column mapping
+        if geo_json.get("features") and len(geo_json["features"]) > 0:
+            first_feature = geo_json["features"][0]
+            properties = first_feature.get("properties", {})
+            tenure_property_name = settings.KB_TENURE_PROPERY_NAME
+            tenure_name = properties.get(tenure_property_name, "")
+
         return tenure_name
-    except:
+
+    except Exception as e:
+        logger.error(f"Error extracting tenure feature details: {e}")
         return ""
 
 
@@ -676,9 +677,7 @@ def get_qs_all_apiary_sites(search_text=""):
     qs_vacant_site = _get_vacant_apiary_site()
 
     return (
-        ApiarySiteOnApproval.objects.filter(
-            id__in=Subquery(qs_apiary_sites.values("latest_approval_link__id"))
-        )
+        ApiarySiteOnApproval.objects.filter(id__in=Subquery(qs_apiary_sites.values("latest_approval_link__id")))
         .exclude(apiary_site__in=qs_vacant_site)
         .exclude(site_status=SITE_STATUS_TRANSFERRED)
     )

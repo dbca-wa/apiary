@@ -332,11 +332,17 @@ LEDGER_SYSTEM_ID = env(
 )
 LEDGER_USER = env("LEDGER_USER", "")
 LEDGER_PASS = env("LEDGER_PASS", "")
+
 KB_USER = env("KB_USER", LEDGER_USER)
 KB_PASSWORD = env("KB_PASSWORD", LEDGER_PASS)
 KB_SERVER_URL = env("KB_SERVER_URL", "https://kb.dbca.wa.gov.au/")
 KB_BASEMAP_STREET_LAYER = env("KB_BASEMAP_STREET_LAYER", "kaartdijin-boodja-public:mapbox-streets-public")
 KB_BASEMAP_SATELLITE_LAYER = env("KB_BASEMAP_SATELLITE_LAYER", "kaartdijin-boodja-public:mapbox-satellite-public")
+KB_TENURE_GEOSERVER_URL = env("KB_TENURE_GEOSERVER_URL", "https://kb.dbca.wa.gov.au/geoserver/ows")
+KB_DBCA_LEGISLATED_TENURE_LAYER = env(
+    "KB_DBCA_LEGISLATED_TENURE_LAYER", "kaartdijin-boodja-public:CPT_DBCA_LEGISLATED_TENURE"
+)
+KB_TENURE_PROPERY_NAME = env("KB_TENURE_PROPERY_NAME", "LEG_TENURE")
 
 CSRF_TRUSTED_ORIGINS_STRING = decouple.config("CSRF_TRUSTED_ORIGINS", default="[]")
 CSRF_TRUSTED_ORIGINS = json.loads(str(CSRF_TRUSTED_ORIGINS_STRING))
