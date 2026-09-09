@@ -1968,6 +1968,7 @@ export default {
       if (this.organisationApplicant) {
         await this.initialiseOrgContactTable();
       }
+      vm.initialisedSelects = false;
       vm.initialiseSelects();
       vm.form = markRaw(document.forms.new_proposal);
       if (vm.hasAmendmentRequest) {
