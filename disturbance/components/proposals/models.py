@@ -1988,8 +1988,8 @@ class Proposal(DirtyFieldsMixin, RevisionedMixin):
                             if apiary_site.get("checked") and "coordinates_moved" in apiary_site:
                                 relation = self.proposal_apiary.get_relation(my_site)
                                 prev_coordinates = {
-                                    "lng": relation.wkb_geometry_processed.wkb_geometry.x,
-                                    "lat": relation.wkb_geometry_processed.wkb_geometry.y,
+                                    "lng": relation.wkb_geometry_processed.x,
+                                    "lat": relation.wkb_geometry_processed.y,
                                 }
 
                                 # Update coordinate (Assessor and Approver can move the proposed site location)
@@ -4633,8 +4633,8 @@ class ProposalApiary(RevisionedMixin):
             # Apiary Site can be moved by assessor and/or approver
             if "coordinates_moved" in my_site:
                 prev_coordinates = {
-                    "lng": apiary_site_on_proposal.wkb_geometry.x,
-                    "lat": apiary_site_on_proposal.wkb_geometry.y,
+                    "lng": apiary_site_on_proposal.wkb_geometry_processed.x,
+                    "lat": apiary_site_on_proposal.wkb_geometry_processed.y,
                 }
                 geom_str = GEOSGeometry(
                     "POINT("
