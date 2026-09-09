@@ -4633,8 +4633,8 @@ class ProposalApiary(RevisionedMixin):
             # Apiary Site can be moved by assessor and/or approver
             if "coordinates_moved" in my_site:
                 prev_coordinates = {
-                    "lng": apiary_site_on_proposal.wkb_geometry.x,
-                    "lat": apiary_site_on_proposal.wkb_geometry.y,
+                    "lng": apiary_site_on_proposal.wkb_geometry_processed.x,
+                    "lat": apiary_site_on_proposal.wkb_geometry_processed.y,
                 }
                 geom_str = GEOSGeometry(
                     "POINT("
