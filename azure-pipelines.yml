@@ -3,78 +3,87 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 trigger:
-  - main
+- main
 
 resources:
-  - repo: self
+- repo: self
 
 variables:
-  tag: "$(Build.BuildId)"
+  tag: '$(Build.BuildId)'
   tagDate: $[ format('{0:yyyy}.{0:MM}.{0:dd}.{0:HH}.{0:mm}{0:ss}', pipeline.startTime) ]
   isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  imageName: 'ghcr.io/dbca-wa/apiary'
+  devImageName: 'ghcr.io/dbca-wa/docker_app_dev'
 
 stages:
-  - stage: Build
-    condition: and(succeeded(), eq(variables.isMain, 'true'))
-    displayName: Build image
-    jobs:
-      - job: Build
-        displayName: Build
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - bash: |
-              set -euo pipefail
-              echo "Computing IMAGE_NAME and IMAGE_TAG"
-              SHORT_SHA=$(git rev-parse --short=7 $(Build.SourceVersion))
-              IMAGE_NAME=ghcr.io/dbca-wa/apiary
-              IMAGE_TAG="$(tagDate)-${SHORT_SHA}"
-              echo "##vso[task.setvariable variable=IMAGE_NAME]$IMAGE_NAME"
-              echo "##vso[task.setvariable variable=IMAGE_TAG]$IMAGE_TAG"
-            displayName: "Set IMAGE_NAME and IMAGE_TAG"
+- stage: Build
+  condition: and(succeeded(), eq(variables.isMain, 'true'))
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    # 1. Extract the short SHA
+    - script: |
+        SHORT_SHA=$(git rev-parse --short=7 $(Build.SourceVersion))
+        echo "##vso[task.setvariable variable=shortSha]$SHORT_SHA"
+      displayName: 'Generate Short Git SHA'
+    # 2. Authenticate to GHCR natively before running commands
+    - task: Docker@2
+      displayName: 'Login to GHCR'
+      inputs:
+        command: login
+        containerRegistry: DockerGitHub
+    # 3. FIXED: Build Main Image using native Bash to force arguments parsing
+    - bash: |
+        export DOCKER_BUILDKIT=1
+        docker build \
+          --build-arg IMAGE_TAG="$(tagDate)-$(shortSha)" \
+          --build-arg IMAGE_NAME="$(imageName)" \
+          -t $(imageName):latest \
+          -t $(imageName):$(tagDate)-$(shortSha) \
+          -f $(Build.SourcesDirectory)/Dockerfile .
+      displayName: 'Docker Build Main Image'         
+    # 4. Push Main Image tags
+    - bash: |
+        docker push $(imageName):latest
+        docker push $(imageName):$(tagDate)-$(shortSha)
+      displayName: 'Push Main Image'     
+    # 5. FIXED: Build Dev Image using native Bash
+    - bash: |
+        export DOCKER_BUILDKIT=1
+        docker build \
+          --build-arg IMAGE_TAG="$(tagDate)-$(shortSha)" \
+          --build-arg IMAGE_NAME="$(devImageName)" \
+          -t $(devImageName):apiary_dev_latest \
+          -t $(devImageName):apiary_dev_$(tagDate)-$(shortSha) \
+          -f $(Build.SourcesDirectory)/dockerdev/Dockerfile .
+      displayName: 'Docker Build Dev Image'
+    # 6. Push Dev Image tags
+    - bash: |
+        docker push $(devImageName):apiary_dev_latest
+        docker push $(devImageName):apiary_dev_$(tagDate)-$(shortSha)
+      displayName: 'Push Dev Image'
 
-          - task: Docker@2
-            displayName: Login to GHCR
-            inputs:
-              command: login
-              containerRegistry: DockerGitHub
+    # 7. Purge images
+    - script: |
+        docker system prune -af
+      displayName: 'Cleanup Docker space'   
 
-          - task: Docker@2
-            displayName: Build image
-            inputs:
-              command: build
-              dockerfile: "$(Build.SourcesDirectory)/Dockerfile"
-              buildContext: "$(Build.SourcesDirectory)"
-              tags: |
-                latest
-                $(IMAGE_TAG)
-              containerRegistry: DockerGitHub
-              repository: $(IMAGE_NAME)
-              # Pass useful build args and avoid copying git repo into image
-              arguments: >
-                --build-arg IMAGE_TAG=$(IMAGE_TAG)
-                --build-arg IMAGE_NAME=$(IMAGE_NAME)
-                --build-arg GIT_COMMIT_VERSION=$(Build.SourceVersion)
-            env:
-              DOCKER_BUILDKIT: 1
-
-          - task: Docker@2
-            displayName: Push image
-            inputs:
-              command: push
-              containerRegistry: DockerGitHub
-              repository: $(IMAGE_NAME)
-              tags: |
-                latest
-                $(IMAGE_TAG)
-
-          - task: Docker@2
-            displayName: Dev Build image and Push
-            inputs:
-              command: buildAndPush
-              dockerfile: "$(Build.SourcesDirectory)/dockerdev/Dockerfile"
-              tags: |
-                apiary_dev_latest
-                apiary_dev_$(IMAGE_TAG)
-              containerRegistry: DockerGitHub
-              repository: ghcr.io/dbca-wa/docker_app_dev
+    # 8. Scan image
+    - bash: |
+        mkdir -p "$(Build.ArtifactStagingDirectory)"
+        chmod 777 "$(Build.ArtifactStagingDirectory)"
+        docker run --pull always --rm -e DOCKER_IMAGE="$(imageName):$(tagDate)-$(shortSha)" -v "$(Build.ArtifactStagingDirectory):/artifacts" ghcr.io/dbca-wa/docker-apps-dev:security_scan_tools_base_latest  bash -c '
+            /app/scan_image.sh
+    
+            cp /tmp/scans/vulnerabilities.csv /artifacts/
+            cp /tmp/scans/sbom.json /artifacts/
+        '
+      displayName: Run security scan
+     
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: security-scan
+      displayName: Publish scan results                                  
