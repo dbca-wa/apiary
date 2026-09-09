@@ -1,15 +1,20 @@
+import logging
+
 from disturbance.components.organisations.models import Organisation
 from disturbance.helpers import is_internal
 
-def organisation_permissions(request, org_id):
-    user = request.user
-    if is_internal(request):
-        organisation_qs = Organisation.objects.filter(organisation_id=org_id)
-        return organisation_qs.exists()
-    elif user.is_authenticated:
-        organisation_qs = user.disturbance_organisations.filter(organisation_id=org_id)
-        if organisation_qs.exists():
-            organisation = organisation_qs.last()
-            return organisation.can_user_edit(user.email)
+logger = logging.getLogger(__name__)
 
-    return True
+
+def organisation_permissions(request, org_id):
+    try:
+        organisation = Organisation.objects.get(organisation_id=org_id)
+    except Organisation.DoesNotExist:
+        # We don't give away information to the caller, we simply log a warning and return False
+        logger.warning(f"No Organisation exists with organisation_id={org_id}")
+        return False
+
+    user = request.user
+
+    # Internal users can access any organisation, external users must be an organisation administrator
+    return is_internal(user) or (user.is_authenticated and organisation.can_user_edit(user.email))

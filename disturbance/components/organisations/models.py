@@ -601,6 +601,14 @@ class Organisation(models.Model):
             # send email
             send_organisation_reinstate_email_notification(user, request.user, self, request)
 
+    def can_user_edit(self, email):
+        return OrganisationContact.objects.filter(
+            organisation=self,
+            is_admin=True,
+            user_status=OrganisationContact.ORG_CONTACT_STATUS_ACTIVE,
+            email=email
+        ).exists()
+
     @property
     def trading_name(self):
         return self.organisation.get("organisation_trading_name", "")
