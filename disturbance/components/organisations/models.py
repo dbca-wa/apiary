@@ -79,11 +79,6 @@ class Organisation(models.Model):
 
     @property
     def organisation(self):
-        # Cache the ledger organisation data for the lifetime of this model
-        # instance to avoid repeated remote calls during serialization.
-        if hasattr(self, "_cached_organisation_data"):
-            return self._cached_organisation_data
-
         try:
             from disturbance.helpers import get_cached_ledger_organisation
 
@@ -93,8 +88,7 @@ class Organisation(models.Model):
                     "Ledger API returned empty data for organisation_id=%s. The organisation may not exist in the ledger database.",
                     self.organisation_id,
                 )
-            # store on instance to prevent duplicate calls during a request
-            self._cached_organisation_data = data
+
             return data
         except Exception as e:
             logger.error(
@@ -603,10 +597,7 @@ class Organisation(models.Model):
 
     def can_user_edit(self, email):
         return OrganisationContact.objects.filter(
-            organisation=self,
-            is_admin=True,
-            user_status=OrganisationContact.ORG_CONTACT_STATUS_ACTIVE,
-            email=email
+            organisation=self, is_admin=True, user_status=OrganisationContact.ORG_CONTACT_STATUS_ACTIVE, email=email
         ).exists()
 
     @property
