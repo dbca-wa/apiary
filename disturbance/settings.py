@@ -150,7 +150,10 @@ CRON_CLASSES = [
     "appmonitor_client.cron.CronJobAppMonitorClient",
     "disturbance.cron.CronJobProcessReportQueue",
     "disturbance.cron.CronJobCronTasks",
+    "disturbance.cron.CronJobPopulateOrganisationProperties",
 ]
+
+POPULATE_ORGANISATION_PROPERTIES_RUN_AT_TIMES = env("POPULATE_ORGANISATION_PROPERTIES_RUN_AT_TIMES", ["03:30"])
 
 CKEDITOR_CONFIGS = {
     "default": {
