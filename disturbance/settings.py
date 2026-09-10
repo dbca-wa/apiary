@@ -212,33 +212,52 @@ ORGANISATION_PERMISSION_MODULE = "disturbance.permission"
 
 HTTP_HOST_FOR_TEST = "localhost:9061"
 
-LOGGERS_TO_REMOVE = [
-    "wildlifecompliance",
-    "wildlifelicensing",
-    "log",
-    "disturbance",
-]
-for logger_name in LOGGERS_TO_REMOVE:
-    if logger_name in LOGGING["loggers"]:
-        del LOGGING["loggers"][logger_name]
+# 1. Determine dynamic levels based on the DEBUG setting
+default_log_level = "DEBUG" if DEBUG else "INFO"
 
-# Prevent dictConfig from disabling existing (module) loggers that aren't
-# present in the LOGGING['loggers'] mapping. Some packages predefine
-# loggers (eg. 'disturbance.*') and removing their entry above would
-# otherwise leave them disabled when dictConfig runs. Ensure existing
-# loggers remain active and propagate to the root handlers.
+# 2. Ensure the log directory exists so RotatingFileHandler doesn't crash
+file_path = LOGGING.get("handlers", {}).get("file", {}).get("filename")
+if file_path:
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+# 3. Clean out unwanted base loggers
+LOGGERS_TO_REMOVE = {"wildlifecompliance", "wildlifelicensing", "log", "disturbance"}
+LOGGING["loggers"] = {k: v for k, v in LOGGING.get("loggers", {}).items() if k not in LOGGERS_TO_REMOVE}
+
+# 4. Apply formatters and general settings
 LOGGING["disable_existing_loggers"] = False
-LOGGING["formatters"]["verbose2"] = {
-    "format": "%(levelname)s %(asctime)s %(name)s [Line:%(lineno)s][%(funcName)s] %(message)s"
+
+LOGGING.setdefault("formatters", {})["verbose2"] = {
+    "format": "%(levelname)s %(asctime)s %(name)s [Line:%(lineno)s][%(funcName)s] %(message)s",
+    "datefmt": "%Y-%m-%d %H:%M:%S",
 }
-LOGGING["loggers"][""]["level"] = "DEBUG"
-LOGGING["handlers"]["console"]["formatter"] = "verbose2"
-LOGGING["handlers"]["console"]["level"] = "DEBUG"
-LOGGING["handlers"]["file"]["formatter"] = "verbose2"
-LOGGING["handlers"]["file"]["level"] = "INFO"
 
-LOGGING["loggers"]["asyncio"] = {"level": "INFO", "propagate": False}
+# 5. Handlers configuration
+if "console" in LOGGING.get("handlers", {}):
+    LOGGING["handlers"]["console"]["formatter"] = "verbose2"
+    LOGGING["handlers"]["console"]["level"] = default_log_level
 
+if "file" in LOGGING.get("handlers", {}):
+    LOGGING["handlers"]["file"]["formatter"] = "verbose2"
+    LOGGING["handlers"]["file"]["level"] = "INFO"
+    LOGGING["handlers"]["file"]["backupCount"] = 5
+    LOGGING["handlers"]["file"]["encoding"] = "utf-8"
+
+# 6. Root & Django Logger configuration
+LOGGING["loggers"][""]["level"] = default_log_level
+
+if "django" in LOGGING["loggers"]:
+    LOGGING["loggers"]["django"]["handlers"] = ["file", "console"]
+    LOGGING["loggers"]["django"]["level"] = "INFO"
+
+# 7. Conditionally suppress noisy libraries only during DEBUG mode
+CHATTY_LOGGERS = ["asyncio", "urllib3", "boto3", "botocore", "paramiko"]
+
+for logger_name in CHATTY_LOGGERS:
+    LOGGING["loggers"][logger_name] = {
+        "level": "WARNING" if DEBUG else "INFO",
+        "propagate": True,
+    }
 
 TEMPLATE_TITLE = "Apiary System"
 TEMPLATE_HEADER_LOGO = "/static/disturbance/img/logo-park-stay-trunc.gif"
