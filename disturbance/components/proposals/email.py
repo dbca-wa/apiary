@@ -269,8 +269,8 @@ def send_amendment_email_notification(amendment_request, request, proposal):
     }
 
     all_ccs = []
-    if proposal.applicant and proposal.applicant.email != proposal.submitter.email and proposal.applicant.email:
-            cc_list = proposal.applicant.email
+    if proposal.applicant and proposal.relevant_applicant.email != proposal.submitter.email and proposal.relevant_applicant.email:
+            cc_list = proposal.relevant_applicant.email
             if cc_list:
                 all_ccs = [cc_list]
 
@@ -319,8 +319,8 @@ def send_external_submit_email_notification(request, proposal):
     }
 
     all_ccs = []
-    if proposal.applicant and proposal.applicant.email != proposal.submitter.email and proposal.applicant.email:
-        cc_list = proposal.applicant.email
+    if proposal.applicant and proposal.relevant_applicant.email != proposal.submitter.email and proposal.relevant_applicant.email:
+        cc_list = proposal.relevant_applicant.email
         if cc_list:
             all_ccs = [cc_list]
 
@@ -387,8 +387,8 @@ def send_proposal_decline_email_notification(proposal,request,proposal_decline):
     if cc_list:
         all_ccs = cc_list.split(',')
 
-    if proposal.applicant and proposal.applicant.email != proposal.submitter.email and proposal.applicant.email:
-            all_ccs.append(proposal.applicant.email)
+    if proposal.applicant and proposal.relevant_applicant.email != proposal.submitter.email and proposal.relevant_applicant.email:
+            all_ccs.append(proposal.relevant_applicant.email)
 
     msg = email.send(proposal.submitter.email, bcc=all_ccs, context=context)
     sender = get_sender_user()
@@ -432,8 +432,8 @@ def send_proposal_approval_email_notification(proposal,request):
     all_ccs = []
     if cc_list:
         all_ccs = cc_list.split(',')
-    if proposal.applicant and proposal.applicant.email != proposal.submitter.email and proposal.applicant.email:
-        all_ccs.append(proposal.applicant.email)
+    if proposal.applicant and proposal.relevant_applicant.email != proposal.submitter.email and proposal.relevant_applicant.email:
+        all_ccs.append(proposal.relevant_applicant.email)
 
     licence_document= proposal.approval.licence_document._file
     if licence_document is not None:
@@ -525,7 +525,7 @@ def _log_proposal_referral_email(email_message, referral, sender=None):
     else:
         text = smart_bytes(email_message)
         subject = ''
-        to = referral.proposal.applicant.email if referral.proposal.applicant.email else ''
+        to = referral.proposal.relevant_applicant.email if referral.proposal.relevant_applicant.email else ''
         fromm = smart_bytes(sender) if sender else SYSTEM_NAME
         all_ccs = ''
 
