@@ -759,6 +759,7 @@ import ApprovalScreenSiteTransferTemporaryUse from "./proposal_approval_site_tra
 import CommsLogs from "@common-utils/comms_logs.vue";
 import ApiaryReferralsForProposal from "@common-utils/apiary/apiary_referrals_for_proposal.vue";
 import { api_endpoints, helpers, constants } from "@/utils/hooks";
+import { parseFetchError } from "@/utils/helpers";
 import ApiarySiteTransfer from "@/components/form_apiary_site_transfer.vue";
 import FormSection from "@/components/forms/section_toggle.vue";
 import $ from "jquery";
@@ -1775,12 +1776,20 @@ export default {
             },
             body: new URLSearchParams(data),
           })
-            .then((response) => response.json())
+            .then(async (response) => {
+              // 1. Check if the response status is NOT in the 200-299 range
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+              }
+
+              // 2. Return the parsed JSON if response.ok is true
+              return response.json();
+            })
             .then((response) => {
               vm.sendingReferral = false;
               vm.original_proposal = helpers.copyObject(response);
               vm.proposal = response;
-              //vm.proposal.applicant.address = vm.proposal.applicant.address != null ? vm.proposal.applicant.address : {};
               vm.proposal.relevant_applicant_address =
                 vm.proposal.relevant_applicant_address != null
                   ? vm.proposal.relevant_applicant_address
@@ -1801,11 +1810,12 @@ export default {
               vm.selected_referral = "";
               vm.referral_text = "";
             })
-            .catch((error) => {
+            .catch(async (error) => {
               console.log(error);
+              const errorMessage = await parseFetchError(error);
               swal.fire({
                 title: "Referral Error",
-                text: error,
+                text: errorMessage,
                 icon: "error",
                 customClass: {
                   confirmButton: "btn btn-primary",
