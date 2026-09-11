@@ -93,7 +93,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CONTAINER_IMAGE_NAME=${IMAGE_NAME}
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y ca-certificates run-one tzdata wget && \
+    apt-get install --no-install-recommends -y ca-certificates python3-uno run-one tzdata wget && \
     apt-get remove --purge -y binutils rust-coreutils git mtr patch vim 2>/dev/null || true && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -122,6 +122,10 @@ COPY --from=builder --chown=oim:oim /app/sri-files /app/sri-files
 
 # Cleanup
 USER root
+
+# Connect system uno to the virtualenv
+RUN ln -s /usr/lib/python3/dist-packages/uno* /app/venv/lib/python*/site-packages/
+
 RUN wget -q https://raw.githubusercontent.com/dbca-wa/wagov_utils/refs/heads/main/wagov_utils/bin/package_cleanup_2604.sh -O /tmp/package_cleanup_2604.sh || true
 RUN chmod 755 /tmp/package_cleanup_2604.sh || true
 RUN /tmp/package_cleanup_2604.sh || true

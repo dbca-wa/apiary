@@ -462,22 +462,80 @@
           />
         </template>
       </div>
-      <div v-if="can_preview">
+      <div v-if="can_preview" class="px-4 pt-3 mt-3 border-top">
         <div v-if="siteTransferApplication">
-          <div>
-            Click
-            <a href="#" @click.prevent="preview_originating_approval">here</a>
-            to preview the originating licence letter.
-          </div>
-          <div>
-            Click
-            <a href="#" @click.prevent="preview_target_approval">here</a> to
-            preview the target licence letter.
-          </div>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click.prevent="preview_originating_approval"
+            :disabled="generatingPreview"
+          >
+            <template v-if="generatingPreview">
+              <span
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span
+              >Generating Preview</template
+            ><template v-else>Preview the originating licence letter</template>
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click.prevent="preview_target_approval"
+            :disabled="generatingPreview"
+          >
+            <template v-if="generatingPreview">
+              <span
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span
+              >Generating Preview</template
+            ><template v-else>Preview the target licence letter</template>
+          </button>
         </div>
         <div v-else>
-          Click <a href="#" @click.prevent="preview">here</a> to preview the
-          licence letter.
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click.prevent="preview"
+            :disabled="generatingPreview"
+          >
+            <template v-if="generatingPreview">
+              <span
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span
+              >Generating Preview</template
+            ><template v-else>Preview the licence letter</template>
+          </button>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" style="display: none">
+          <symbol id="info-fill" fill="currentColor" viewBox="0 0 16 16">
+            <path
+              d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+            />
+          </symbol>
+        </svg>
+        <div
+          class="alert alert-primary d-flex align-items-center py-2 mt-3"
+          role="alert"
+        >
+          <svg
+            class="bi flex-shrink-0 me-2"
+            width="24"
+            height="24"
+            role="img"
+            aria-label="Info:"
+          >
+            <use xlink:href="#info-fill" />
+          </svg>
+          <div>
+            Generating a preview or {{ actionVerbText }} an application can take
+            some time
+          </div>
         </div>
       </div>
 
@@ -489,7 +547,12 @@
           class="btn btn-primary"
           @click="ok"
         >
-          <i class="fa fa-spinner fa-spin"></i> Processing
+          <span
+            class="spinner-border spinner-border-sm"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          Processing
         </button>
         <span
           v-else-if="ok_button_disabled"
@@ -505,11 +568,11 @@
             @click="ok"
             disabled
           >
-            Ok
+            {{ title }}
           </button>
         </span>
         <button v-else type="button" class="btn btn-primary" @click="ok">
-          Ok
+          {{ title }}
         </button>
         <button type="button" class="btn btn-secondary" @click="cancel">
           Cancel
@@ -524,6 +587,7 @@ import { v4 as uuid } from "uuid";
 import modal from "@vue-utils/bootstrap-modal.vue";
 import alert from "@vue-utils/alert.vue";
 import { helpers, api_endpoints } from "@/utils/hooks.js";
+import { parseFetchError } from "@/utils/helpers";
 import ComponentSiteSelection from "@/components/common/apiary/component_site_selection.vue";
 import FormSection from "@/components/forms/section_toggle.vue";
 import $ from "jquery";
@@ -577,6 +641,7 @@ export default {
       approval: {},
       state: "proposed_approval",
       issuingApproval: false,
+      generatingPreview: false,
       validation_form: null,
       errors: false,
       toDateError: false,
@@ -697,6 +762,11 @@ export default {
     },
     can_preview: function () {
       return this.processing_status == "With Approver" ? true : false;
+    },
+    actionVerbText: function () {
+      return this.processing_status == "With Approver"
+        ? "issuing"
+        : "proposing to issue";
     },
     preview_licence_url: function () {
       return this.proposal_id ? `/preview/licence-pdf/${this.proposal_id}` : "";
@@ -928,7 +998,7 @@ export default {
       }
       let approval = JSON.parse(JSON.stringify(this.approval)); // Deep copy
 
-      this.issuingApproval = true;
+      this.generatingPreview = true;
       if (this.state == "final_approval") {
         fetch(
           helpers.add_endpoint_json(
@@ -944,14 +1014,34 @@ export default {
             },
           },
         )
-          .then((response) => response.blob())
+          .then(async (response) => {
+            // 1. Explicitly check if the server returned a 200-299 status code
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(errorText);
+            }
+            return response.blob();
+          })
           .then(function (myBlob) {
             const objectURL = URL.createObjectURL(myBlob);
             previewWindow.location.href = objectURL;
+          })
+          .catch(async (error) => {
+            const errorMessage = await parseFetchError(error);
+            swal.fire({
+              title: "Error Generating Preview",
+              text: errorMessage,
+              icon: "error",
+              customClass: {
+                confirmButton: "btn btn-primary",
+              },
+            });
+          })
+          .finally(() => {
+            this.approval.preview = false;
+            this.generatingPreview = false;
           });
       }
-      this.approval.preview = false;
-      this.issuingApproval = false;
     },
     sendData: function (preview = false) {
       let vm = this;
