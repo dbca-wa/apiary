@@ -10,7 +10,7 @@ from unoserver.client import UnoClient
 
 from disturbance.components.main.models import ApiaryGlobalSettings
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def create_apiary_licence_pdf_contents(approval, proposal, copied_to_permit, site_transfer_preview=None):
