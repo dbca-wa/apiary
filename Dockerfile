@@ -122,6 +122,10 @@ COPY --from=builder --chown=oim:oim /app/sri-files /app/sri-files
 
 # Cleanup
 USER root
+
+# Connect system uno to the virtualenv
+RUN ln -s /usr/lib/python3/dist-packages/uno* /app/venv/lib/python*/site-packages/
+
 RUN wget -q https://raw.githubusercontent.com/dbca-wa/wagov_utils/refs/heads/main/wagov_utils/bin/package_cleanup_2604.sh -O /tmp/package_cleanup_2604.sh || true
 RUN chmod 755 /tmp/package_cleanup_2604.sh || true
 RUN /tmp/package_cleanup_2604.sh || true
