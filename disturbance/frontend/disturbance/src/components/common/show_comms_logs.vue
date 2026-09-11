@@ -55,9 +55,10 @@ export default {
         language: {
           processing: constants.DATATABLE_PROCESSING_HTML,
         },
-        responsive: true,
+        responsive: false,
         deferRender: true,
         autowidth: true,
+        scrollX: true,
         order: [[8, "desc"]], // order the non-formatted date as a hidden column
         processing: true,
         // dom:
