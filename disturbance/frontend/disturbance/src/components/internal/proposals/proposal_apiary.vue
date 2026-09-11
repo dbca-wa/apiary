@@ -87,49 +87,47 @@
                       </span>
                     </template>
                   </div>
-                  <table class="table small-table table-hover table-referrals">
-                    <thead>
-                      <tr>
-                        <th>Referral</th>
-                        <th>Status/Action</th>
-                      </tr>
-                    </thead>
-                    <tr v-for="r in proposal.latest_referrals" :key="r.id">
-                      <td>
-                        <small
-                          ><strong>{{
-                            r.apiary_referral.referral_group.name
-                          }}</strong></small
-                        ><br />
-                        <small
-                          ><strong>{{ formatDate(r.lodged_on) }}</strong></small
-                        >
-                      </td>
-                      <td>
-                        <small
-                          ><strong>{{ r.processing_status }}</strong></small
-                        ><br />
-                        <template v-if="r.processing_status == 'Awaiting'">
-                          <small v-if="canLimitedAction"
-                            ><a @click.prevent="remindReferral(r)" href="#"
-                              >Remind</a
-                            >
-                            /
-                            <a @click.prevent="recallReferral(r)" href="#"
-                              >Recall</a
-                            ></small
-                          >
-                        </template>
-                        <template v-else>
-                          <small v-if="canLimitedAction"
-                            ><a @click.prevent="resendReferral(r)" href="#"
-                              >Resend</a
-                            ></small
-                          >
-                        </template>
-                      </td>
-                    </tr>
-                  </table>
+                    <table class="table table-sm table-hover border">
+                      <thead class="table-light">
+                        <tr>
+                          <th scope="col">Referral</th>
+                          <th scope="col">Status/Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="r in proposal.latest_referrals" :key="r.id">
+                          <td>
+                            <small>{{
+                              r.apiary_referral.referral_group.name
+                            }}</small
+                            ><br />
+                            <small>{{ formatDate(r.lodged_on) }}</small>
+                          </td>
+                          <td>
+                            <small>{{ r.processing_status }}</small
+                            ><br />
+                            <template v-if="r.processing_status == 'Awaiting'">
+                              <small v-if="canLimitedAction"
+                                ><a @click.prevent="remindReferral(r)" href="#"
+                                  >Remind</a
+                                >
+                                /
+                                <a @click.prevent="recallReferral(r)" href="#"
+                                  >Recall</a
+                                ></small
+                              >
+                            </template>
+                            <template v-else>
+                              <small v-if="canLimitedAction"
+                                ><a @click.prevent="resendReferral(r)" href="#"
+                                  >Resend</a
+                                ></small
+                              >
+                            </template>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   <ApiaryReferralsForProposal
                     @refreshFromResponse="refreshFromResponse"
                     :proposal="proposal"
