@@ -1,12 +1,16 @@
 import io
+import logging
 import os
 
 from django.conf import settings
 from docx.shared import Mm
 from docxtpl import DocxTemplate, InlineImage, R
+from rest_framework.exceptions import ValidationError
 from unoserver.client import UnoClient
 
 from disturbance.components.main.models import ApiaryGlobalSettings
+
+logger = logging.get_logger(__name__)
 
 
 def create_apiary_licence_pdf_contents(approval, proposal, copied_to_permit, site_transfer_preview=None):
@@ -47,8 +51,28 @@ def create_apiary_licence_pdf_contents(approval, proposal, copied_to_permit, sit
     doc.save(doc_io)
     doc_bytes = doc_io.getvalue()
 
-    # 4. Convert directly to PDF bytes via UnoClient (In-memory via socket)
-    client = UnoClient(server="127.0.0.1", port=2002)
-    pdf_bytes = client.convert(indata=doc_bytes, convert_to="pdf")
+    # 4. Convert to PDF with graceful error handling
+    try:
+        client = UnoClient(server="127.0.0.1", port=2002)
+        pdf_bytes = client.convert(indata=doc_bytes, convert_to="pdf")
+    except (ConnectionRefusedError, OSError) as e:
+        logger.error(
+            "Unoserver connection failed on 127.0.0.1:2002 for Approval ID %s: %s",
+            approval.id,
+            e,
+            exc_info=True,
+        )
+        raise ValidationError(
+            "The document conversion service (Unoserver) is currently unreachable. "
+            "Please try again or contact IT support if the problem persists."
+        )
+    except Exception as e:
+        logger.error(
+            "Unexpected error during PDF generation for Approval ID %s: %s",
+            approval.id,
+            e,
+            exc_info=True,
+        )
+        raise ValidationError(f"An unexpected error occurred while generating the licence PDF: {str(e)}")
 
     return pdf_bytes
