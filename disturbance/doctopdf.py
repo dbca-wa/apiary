@@ -64,7 +64,7 @@ def create_apiary_licence_pdf_contents(approval, proposal, copied_to_permit, sit
         )
         raise ValidationError(
             "The document conversion service (Unoserver) is currently unreachable. "
-            "Please try again or contact IT support if the problem persists."
+            "Please try again or contact OIM Service Desk if the problem persists."
         )
     except Exception as e:
         logger.error(
