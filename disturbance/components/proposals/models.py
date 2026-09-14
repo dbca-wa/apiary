@@ -4606,28 +4606,28 @@ class ProposalApiary(RevisionedMixin):
 
             props = site.get("properties", {})
 
-            # --- Update properties on proposal relation ---
-            if not props.get("licensed_site"):
-                apiary_site_on_proposal.licensed_site = props.get("licensed_site")
-                apiary_site_on_proposal.batch_no = props.get("batch_no")
+            is_licensed = bool(props.get("licensed_site", False))
 
-                cpc_date = props.get("approval_cpc_date")
-                apiary_site_on_proposal.approval_cpc_date = (
-                    datetime.datetime.strptime(cpc_date, "%Y-%m-%d").date() if cpc_date else None
-                )
+            apiary_site_on_proposal.licensed_site = is_licensed
+            apiary_site_on_proposal.batch_no = props.get("batch_no")
 
-                minister_date = props.get("approval_minister_date")
-                apiary_site_on_proposal.approval_minister_date = (
-                    datetime.datetime.strptime(minister_date, "%Y-%m-%d").date() if minister_date else None
-                )
+            cpc_date = props.get("approval_cpc_date")
+            apiary_site_on_proposal.approval_cpc_date = (
+                datetime.datetime.strptime(cpc_date, "%Y-%m-%d").date() if cpc_date else None
+            )
 
-                apiary_site_on_proposal.map_ref = props.get("map_ref")
-                apiary_site_on_proposal.forest_block = props.get("forest_block")
-                apiary_site_on_proposal.cog = props.get("cog")
-                apiary_site_on_proposal.roadtrack = props.get("roadtrack")
-                apiary_site_on_proposal.zone = props.get("zone")
-                apiary_site_on_proposal.catchment = props.get("catchment")
-                apiary_site_on_proposal.dra_permit = props.get("dra_permit")
+            minister_date = props.get("approval_minister_date")
+            apiary_site_on_proposal.approval_minister_date = (
+                datetime.datetime.strptime(minister_date, "%Y-%m-%d").date() if minister_date else None
+            )
+
+            apiary_site_on_proposal.map_ref = props.get("map_ref")
+            apiary_site_on_proposal.forest_block = props.get("forest_block")
+            apiary_site_on_proposal.cog = props.get("cog")
+            apiary_site_on_proposal.roadtrack = props.get("roadtrack")
+            apiary_site_on_proposal.zone = props.get("zone")
+            apiary_site_on_proposal.catchment = props.get("catchment")
+            apiary_site_on_proposal.dra_permit = props.get("dra_permit")
 
             # --- Status & Flags ---
             is_checked = site.get("checked", False)
