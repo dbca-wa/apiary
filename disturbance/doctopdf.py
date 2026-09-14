@@ -53,11 +53,15 @@ def create_apiary_licence_pdf_contents(approval, proposal, copied_to_permit, sit
 
     # 4. Convert to PDF with graceful error handling
     try:
-        client = UnoClient(server="127.0.0.1", port=2002)
+        host = settings.UNOSERVER_HOST
+        port = settings.UNOSERVER_PORT
+        client = UnoClient(server=host, port=port)
         pdf_bytes = client.convert(indata=doc_bytes, convert_to="pdf")
     except (ConnectionRefusedError, OSError) as e:
         logger.error(
-            "Unoserver connection failed on 127.0.0.1:2002 for Approval ID %s: %s",
+            "Unoserver connection failed on %s:%s for Approval ID %s: %s",
+            host,
+            port,
             approval.id,
             e,
             exc_info=True,
