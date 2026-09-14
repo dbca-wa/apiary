@@ -3,7 +3,7 @@
         <div class="card-body card-body collapse">
             <div class="scrollable-div">
                 <div style="float: left; width: 80%;">
-                    <table class="table small-table">
+                    <table class="table table-sm">
                         <thead>
                             <tr>
                                 <th>Lodgement</th>
@@ -21,7 +21,7 @@
                     </table>
                 </div>
                 <div style="float: right; width: 20%;">
-                    <table class="table small-table">
+                    <table class="table table-sm">
                         <thead>
                             <tr>
                                 <th style="visibility: hidden;">Version</th>
