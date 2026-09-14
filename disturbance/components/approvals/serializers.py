@@ -1,28 +1,31 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from django.conf import settings
 from django.utils import timezone
 from ledger_api_client.ledger_models import EmailUserRO as EmailUser
+from rest_framework import serializers
 
+from disturbance.components.ap_payments.models import AnnualRentalFee, AnnualRentalFeePeriod
+from disturbance.components.ap_payments.serializers import AnnualRentalFeePeriodSerializer, AnnualRentalFeeSerializer
 from disturbance.components.approvals.models import (
+    ApiarySiteOnApproval,
     Approval,
     ApprovalDocument,
     ApprovalLogEntry,
     ApprovalUserAction,
 )
-
-logger = logging.getLogger(__name__)
-from rest_framework import serializers
-
-from disturbance.components.ap_payments.models import AnnualRentalFee, AnnualRentalFeePeriod
-from disturbance.components.ap_payments.serializers import AnnualRentalFeePeriodSerializer, AnnualRentalFeeSerializer
-from disturbance.components.approvals.serializers_apiary import ApiarySiteOnApprovalLicenceDocSerializer
 from disturbance.components.main.serializers import CommunicationLogEntrySerializer
+from disturbance.components.main.utils import get_region_district, get_tenure
 from disturbance.components.organisations.models import Organisation
+from disturbance.components.proposals.models import ApiaryAnnualRentalFee, SiteCategory
 from disturbance.components.proposals.serializers_apiary import (
     ApiaryProposalRequirementSerializer,
     ApplicantAddressSerializer,
     OrgAddressSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class EmailUserSerializer(serializers.ModelSerializer):
@@ -62,6 +65,62 @@ class ApprovalDocumentHistorySerializer(serializers.ModelSerializer):
         return url
 
 
+def bulk_fetch_gis_data(relations, max_workers=20):
+    """Fetches tenure and region/district for all site relations concurrently
+
+    using a thread pool to avoid sequential HTTP request bottlenecks.
+    """
+    gis_map = {}
+
+    def _fetch_single_site_gis(relation):
+        geom = getattr(relation, "wkb_geometry", None)
+        if not geom:
+            return relation.id, "", ""
+
+        tenure_val = ""
+        region_val = ""
+
+        # 1. Fetch Tenure
+        try:
+            tenure_val = get_tenure(geom) or ""
+        except Exception as e:
+            logger.warning(f"Failed to fetch tenure for relation {relation.id}: {e}")
+
+        # 2. Fetch Region/District
+        try:
+            region_val = get_region_district(geom) or ""
+        except Exception as e:
+            logger.warning(f"Failed to fetch region/district for relation {relation.id}: {e}")
+
+        return relation.id, tenure_val, region_val
+
+    # Convert queryset/generator to list so we know count
+    relations_list = list(relations)
+    if not relations_list:
+        return {}
+
+    # Adjust workers to not exceed the number of items
+    workers = min(max_workers, len(relations_list))
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        # Submit all fetch jobs to the pool
+        futures = {executor.submit(_fetch_single_site_gis, rel): rel for rel in relations_list}
+
+        for future in as_completed(futures):
+            try:
+                relation_id, tenure, region = future.result()
+                gis_map[relation_id] = {
+                    "tenure": tenure,
+                    "region_district": region,
+                }
+            except Exception as e:
+                rel = futures[future]
+                logger.error(f"Unexpected error in bulk GIS worker for relation {rel.id}: {e}")
+                gis_map[rel.id] = {"tenure": "", "region_district": ""}
+
+    return gis_map
+
+
 class ApprovalSerializerForLicenceDoc(serializers.ModelSerializer):
     authority_holder = serializers.SerializerMethodField()
     authority_holder_address = serializers.SerializerMethodField()
@@ -84,6 +143,90 @@ class ApprovalSerializerForLicenceDoc(serializers.ModelSerializer):
     zone = serializers.SerializerMethodField()
     catchment = serializers.SerializerMethodField()
     dra_permit = serializers.SerializerMethodField()
+
+    def _get_relations_data(self, approval):
+        """Fetch all relations and build their data with ZERO per-row queries."""
+        if hasattr(self, "_cached_relations_data"):
+            return self._cached_relations_data
+
+        # 1. Pre-calculate fees per category ONCE (2-3 queries total instead of 750+)
+        category_cache = {}
+        for cat in SiteCategory.objects.all():
+            category_cache[cat.id] = {
+                "display_name": cat.display_name,
+                "name": cat.name,
+                "fee_renewal": cat.fee_renewal_per_site,
+                "fee_transfer": cat.fee_transfer_per_site,
+            }
+
+        # 2. Fetch rental fees ONCE (1 query)
+        fees_applied = ApiaryAnnualRentalFee.get_fees_by_period(approval.start_date, approval.expiry_date)
+        first_fee = fees_applied[0] if fees_applied else {}
+        fee_south_west = first_fee.get("amount_south_west_per_year", 0)
+        fee_remote = first_fee.get("amount_remote_per_year", 0)
+
+        # 3. Fetch relations with pre-fetched foreign keys (1 query)
+        relations = (
+            ApiarySiteOnApproval.objects.filter(approval=approval)
+            .exclude(site_status=settings.SITE_STATUS_TRANSFERRED)
+            .select_related("apiary_site", "site_category")
+            .order_by("apiary_site_id")
+        )
+
+        # 4. Fetch GIS in parallel
+        gis_map = bulk_fetch_gis_data(relations)
+
+        licensed_sites = []
+        unlicensed_sites = []
+
+        for rel in relations:
+            cat_data = category_cache.get(rel.site_category_id, {})
+            is_sw = cat_data.get("name") == SiteCategory.CATEGORY_SOUTH_WEST
+            annual_fee = fee_south_west if is_sw else fee_remote
+
+            gis_info = gis_map.get(rel.id, {"tenure": "", "region_district": ""})
+            geom = rel.wkb_geometry
+
+            site_dict = {
+                "id": rel.apiary_site_id,
+                "coords": ({"lng": geom.x, "lat": geom.y} if geom else {"lng": "", "lat": ""}),
+                "site_category": cat_data.get("display_name", ""),
+                "tenure": gis_info["tenure"],
+                "region_district": gis_info["region_district"],
+                "licensed_site": rel.licensed_site or False,
+                "batch_no": getattr(rel, "batch_no", "") or "",
+                "approval_cpc_date": (getattr(rel, "approval_cpc_date", "") or ""),
+                "approval_minister_date": (getattr(rel, "approval_minister_date", "") or ""),
+                "map_ref": getattr(rel, "map_ref", "") or "",
+                "forest_block": getattr(rel, "forest_block", "") or "",
+                "cog": getattr(rel, "cog", "") or "",
+                "roadtrack": getattr(rel, "roadtrack", "") or "",
+                "zone": getattr(rel, "zone", "") or "",
+                "catchment": getattr(rel, "catchment", "") or "",
+                "dra_permit": ("Yes" if getattr(rel, "dra_permit", False) else "No"),
+                "fee_application": annual_fee,
+                "fee_renewal": cat_data.get("fee_renewal", 0),
+                "fee_transfer": cat_data.get("fee_transfer", 0),
+            }
+
+            if rel.licensed_site:
+                licensed_sites.append(site_dict)
+            else:
+                unlicensed_sites.append(site_dict)
+
+        self._cached_relations_data = (unlicensed_sites, licensed_sites)
+        return self._cached_relations_data
+
+    def get_apiary_sites(self, approval):
+        unlicensed_sites, _ = self._get_relations_data(approval)
+        return unlicensed_sites
+
+    def get_apiary_licensed_sites(self, approval):
+        _, licensed_sites = self._get_relations_data(approval)
+        return licensed_sites
+
+    def get_requirements(self, approval):
+        return [{"id": req.id, "text": req.requirement} for req in approval.proposalrequirement_set.all()]
 
     def get_authority_holder(self, approval):
         return approval.relevant_applicant_name
@@ -116,73 +259,6 @@ class ApprovalSerializerForLicenceDoc(serializers.ModelSerializer):
 
         return approver.get_full_name() if approver else ""
 
-    def get_apiary_sites(self, approval):
-        """Return the Apiary Licenses (where licensed_sites=False)"""
-        ret_array = []
-
-        apiary_site_on_approvals = approval.get_relations()
-        for relation in apiary_site_on_approvals.order_by("apiary_site_id"):
-            if not relation.licensed_site:
-                serializer = ApiarySiteOnApprovalLicenceDocSerializer(relation)
-                ret_array.append(serializer.data)
-
-        return ret_array
-
-    def get_apiary_licensed_sites(self, approval):
-        """Return the Apiary Licensed Sited for Permits (where licensed_sites=False)"""
-        ret_array = []
-
-        apiary_site_on_approvals = approval.get_relations()
-        for relation in apiary_site_on_approvals.order_by("apiary_site_id"):
-            if relation.licensed_site:
-                serializer = ApiarySiteOnApprovalLicenceDocSerializer(relation)
-                ret_array.append(serializer.data)
-
-        return ret_array
-
-    def get_requirements(self, approval):
-        ret_array = []
-        for req in approval.proposalrequirement_set.all():
-            ret_array.append(
-                {
-                    "id": req.id,
-                    "text": req.requirement,
-                }
-            )
-        return ret_array
-
-    #    def get_map_ref(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('map_ref')
-    #
-    #    def get_forest_block(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('forest_block')
-    #
-    #    def get_cog(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('cog')
-    #
-    #    def get_roadtrack(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('roadtrack')
-    #
-    #    def get_zone(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('zone')
-    #
-    #    def get_catchment(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('catchment')
-    #
-    #    def get_dra_permit(self, approval):
-    #        if approval.current_proposal.proposed_issuance_approval.get('dra_permit'):
-    #            return 'Yes'
-    #        return 'No'
-    #
-    #    def get_batch_no(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('batch_no')
-    #
-    #    def get_cpc_date(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('cpc_date')
-    #
-    #    def get_minister_date(self, approval):
-    #        return approval.current_proposal.proposed_issuance_approval.get('minister_date')
-
     def get_map_ref(self, approval):
         return ""
 
@@ -212,24 +288,6 @@ class ApprovalSerializerForLicenceDoc(serializers.ModelSerializer):
 
     def get_minister_date(self, approval):
         return ""
-
-    # def bak_get_requirements(self, approval):
-    #    ret_array = []
-    #    site_transfer_preview = self.context.get('site_transfer_preview')
-    #    #if self.proposal.application_type.name == ApplicationType.SITE_TRANSFER:
-    #    for req in approval.current_proposal.requirements.all():
-    #        if site_transfer_preview:
-    #            if not req.is_deleted and req.apiary_approval_id == approval.id:
-    #                ret_array.append({
-    #                    'id': req.id,
-    #                    'text': req.requirement,
-    #                })
-    #        else:
-    #            ret_array.append({
-    #                'id': req.id,
-    #                'text': req.requirement,
-    #            })
-    #    return ret_array
 
     class Meta:
         model = Approval

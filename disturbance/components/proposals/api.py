@@ -1170,21 +1170,12 @@ class ProposalApiaryViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def final_approval(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
+            serializer = ProposedApprovalSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-            if instance.proposal.application_type.name == ApplicationType.SITE_TRANSFER:
-                serializer = ProposedApprovalSerializer(data=request.data)
-                serializer.is_valid(raise_exception=True)
-            else:
-                serializer = ProposedApprovalSerializer(data=request.data)
-                serializer.is_valid(raise_exception=True)
-
-            preview = None
+            preview = request.data.get("preview")
             if instance.proposal and instance.proposal.processing_status == Proposal.PROCESSING_STATUS_WITH_APPROVER:
-                preview = request.data.get("preview")
                 instance = instance.final_approval(request, serializer.validated_data, preview=preview)
-
-            serializer_class = self.internal_apiary_serializer_class()
-            serializer = serializer_class(instance.proposal, context={"request": request})
 
             if preview:
                 site_transfer_preview = False
@@ -1192,21 +1183,28 @@ class ProposalApiaryViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
                     site_transfer_preview = True
                     originating_target = request.data.get("originating_target")
                     if originating_target == "originating":
-                        preview_approval_id = serializer.data.get("proposal_apiary", {}).get("originating_approval_id")
+                        preview_approval = instance.originating_approval or instance.proposal.approval
                     else:
-                        preview_approval_id = instance.target_approval_id
+                        preview_approval = instance.target_approval or Approval.objects.get(
+                            id=instance.target_approval_id
+                        )
                 else:
-                    preview_approval_id = serializer.data.get("approval", {}).get("id")
-                licence_response = HttpResponse(content_type="application/pdf")
-                preview_approval = Approval.objects.get(id=preview_approval_id)
+                    preview_approval = instance.proposal.approval or instance.retrieve_approval
+
                 preview_approval.approver_id = request.user.id
+                licence_response = HttpResponse(content_type="application/pdf")
 
                 licence_response.content = preview_approval.generate_doc(
                     preview=True, site_transfer_preview=site_transfer_preview
                 )
+
                 transaction.set_rollback(True)
+
                 return licence_response
 
+            # Non-preview fallback
+            serializer_class = self.internal_apiary_serializer_class()
+            serializer = serializer_class(instance.proposal, context={"request": request})
             return Response(serializer.data)
 
     # TODO on-cleanup - why it is a POST?
