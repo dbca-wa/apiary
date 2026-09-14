@@ -3,10 +3,7 @@
 {%  block content %}
     A Compliance with requirements{{ compliance.reference }} is due for submission.
 
-    <p>
     You can access this Compliance using the following link:
-    </p>
+    
     {{url}}
-
-
 {%  endblock %}

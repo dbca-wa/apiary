@@ -13,17 +13,14 @@
 	{% endif %}
 
 	{% if proposal.proposed_issuance_approval %}
-        <p>
-        	<span>Approved: </span>
-        </p>
-        <p>Start date: {{ start_date }}</p>
-        <p>Expiry date: {{ expiry_date }}</p>
-        <p>Details: {{ details }}</p>
+        Approved:
+        
+        Start date: {{ start_date }}
+        Expiry date: {{ expiry_date }}
+        Details: {{ details }}
     {% endif %}
 
-    <p>
     You can access this Proposal using the following link:
-    </p>
-    {{url}}
 
+    {{url}}
 {%  endblock %}

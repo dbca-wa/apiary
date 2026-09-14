@@ -8,7 +8,7 @@
     	{{ approval.lodgement_number }}
     {% endif %}
     
-    	 Is due to expire on <u>{{ approval.expiry_date }}</u>
+    	 Is due to expire on {{ approval.expiry_date }}
     	If the work is completed and this approval does not need to be renewed, please ignore this renewal notification.
     	 If the work is ongoing or hasn’t started yet you will need to renew the approval by submitting a renewal proposal prior to the expiry date
     	Please note that if you have outstanding compliances these are required to be submitted before the approval can be renewed.
