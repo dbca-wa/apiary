@@ -4563,117 +4563,198 @@ class ProposalApiary(RevisionedMixin):
                 raise
 
     def _update_apiary_sites(self, approval, sites_approved, request):
-        for site in request.data.get("apiary_sites"):
-            # During final approval - Approver may have updated these values
-            if not site["properties"].get("licensed_site"):
-                a_site = ApiarySite.objects.get(id=site["id"])
-                apiary_site_on_proposal = self.get_relation(a_site)
+        from disturbance.components.approvals.models import ApiarySiteOnApproval
+        from disturbance.components.proposals.models import (
+            ApiarySite,
+            ApiarySiteOnProposal,
+        )
 
-                apiary_site_on_proposal.licensed_site = site["properties"].get("licensed_site")
-                apiary_site_on_proposal.batch_no = site["properties"].get("batch_no")
+        sites_data = request.data.get("apiary_sites", [])
+        if not sites_data:
+            return
+
+        site_ids = [s["id"] for s in sites_data if "id" in s]
+
+        # 1. Pre-fetch existing records in 3 queries
+        sites_by_id = ApiarySite.objects.in_bulk(site_ids)
+        relations_by_site_id = {
+            rel.apiary_site_id: rel
+            for rel in ApiarySiteOnProposal.objects.filter(
+                proposal_apiary=self, apiary_site_id__in=site_ids
+            ).select_related("site_category_processed", "site_category_draft")
+        }
+        asoa_by_site_id = {
+            asoa.apiary_site_id: asoa
+            for asoa in ApiarySiteOnApproval.objects.filter(approval=approval, apiary_site_id__in=site_ids)
+        }
+
+        # Lists for bulk database operations
+        proposal_relations_to_update = []
+        sites_to_update = []
+        asoa_to_create = []
+        asoa_to_update = []
+        denied_site_ids = []
+
+        # 2. In-Memory Processing (Zero SQL queries in this loop)
+        for site in sites_data:
+            site_id = site.get("id")
+            a_site = sites_by_id.get(site_id)
+            apiary_site_on_proposal = relations_by_site_id.get(site_id)
+
+            if not a_site or not apiary_site_on_proposal:
+                continue
+
+            props = site.get("properties", {})
+
+            # --- Update properties on proposal relation ---
+            if not props.get("licensed_site"):
+                apiary_site_on_proposal.licensed_site = props.get("licensed_site")
+                apiary_site_on_proposal.batch_no = props.get("batch_no")
+
+                cpc_date = props.get("approval_cpc_date")
                 apiary_site_on_proposal.approval_cpc_date = (
-                    datetime.datetime.strptime(site["properties"].get("approval_cpc_date"), "%Y-%M-%d")
-                    if site["properties"].get("approval_cpc_date")
-                    else None
+                    datetime.datetime.strptime(cpc_date, "%Y-%m-%d").date() if cpc_date else None
                 )
+
+                minister_date = props.get("approval_minister_date")
                 apiary_site_on_proposal.approval_minister_date = (
-                    datetime.datetime.strptime(site["properties"].get("approval_minister_date"), "%Y-%M-%d")
-                    if site["properties"].get("approval_minister_date")
-                    else None
+                    datetime.datetime.strptime(minister_date, "%Y-%m-%d").date() if minister_date else None
                 )
-                apiary_site_on_proposal.map_ref = site["properties"].get("map_ref")
-                apiary_site_on_proposal.forest_block = site["properties"].get("forest_block")
-                apiary_site_on_proposal.cog = site["properties"].get("cog")
-                apiary_site_on_proposal.roadtrack = site["properties"].get("roadtrack")
-                apiary_site_on_proposal.zone = site["properties"].get("zone")
-                apiary_site_on_proposal.catchment = site["properties"].get("catchment")
-                apiary_site_on_proposal.dra_permit = site["properties"].get("dra_permit")
-                apiary_site_on_proposal.save()
 
-        for my_site in sites_approved:
-            a_site = ApiarySite.objects.get(id=my_site["id"])
-            apiary_site_on_proposal = self.get_relation(a_site)
+                apiary_site_on_proposal.map_ref = props.get("map_ref")
+                apiary_site_on_proposal.forest_block = props.get("forest_block")
+                apiary_site_on_proposal.cog = props.get("cog")
+                apiary_site_on_proposal.roadtrack = props.get("roadtrack")
+                apiary_site_on_proposal.zone = props.get("zone")
+                apiary_site_on_proposal.catchment = props.get("catchment")
+                apiary_site_on_proposal.dra_permit = props.get("dra_permit")
 
-            if my_site["checked"]:
-                # relation.approval = approval
-                apiary_site_on_proposal.site_status = SITE_STATUS_APPROVED
-            else:
-                apiary_site_on_proposal.site_status = SITE_STATUS_DENIED
-            # Reset selected status to make the checkboxes unticked when renewal or so
+            # --- Status & Flags ---
+            is_checked = site.get("checked", False)
+            apiary_site_on_proposal.site_status = (
+                SITE_STATUS_APPROVED if is_checked else SITE_STATUS_DENIED
+            )
             apiary_site_on_proposal.workflow_selected_status = False
-            apiary_site_on_proposal.save()
-            a_site.make_vacant(False, apiary_site_on_proposal)
-            a_site.save()
+            proposal_relations_to_update.append(apiary_site_on_proposal)
 
-            # Apiary Site can be moved by assessor and/or approver
-            if "coordinates_moved" in my_site:
+            # --- Make Vacant fields in-memory (No save!) ---
+            a_site.is_vacant = False
+            a_site.proposal_link_for_vacant = None
+            a_site.approval_link_for_vacant = None
+            sites_to_update.append(a_site)
+
+            # --- Coordinates moved (if any) ---
+            if "coordinates_moved" in site:
                 prev_coordinates = {
                     "lng": apiary_site_on_proposal.wkb_geometry_processed.x,
                     "lat": apiary_site_on_proposal.wkb_geometry_processed.y,
                 }
                 geom_str = GEOSGeometry(
-                    "POINT("
-                    + str(my_site["coordinates_moved"]["lng"])
-                    + " "
-                    + str(my_site["coordinates_moved"]["lat"])
-                    + ")",
+                    f"POINT({site['coordinates_moved']['lng']} {site['coordinates_moved']['lat']})",
                     srid=4326,
                 )
-                from disturbance.components.proposals.serializers_apiary import (
-                    ApiarySiteOnProposalProcessedGeometrySaveSerializer,
-                )
+                apiary_site_on_proposal.wkb_geometry_processed = geom_str
 
-                serializer = ApiarySiteOnProposalProcessedGeometrySaveSerializer(
-                    apiary_site_on_proposal, data={"wkb_geometry_processed": geom_str}
-                )
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-
-                # Log it
                 self.proposal.log_user_action(
                     ProposalUserAction.APIARY_SITE_MOVED.format(
-                        my_site["id"],
+                        site_id,
                         prev_coordinates,
                         (
-                            my_site["coordinates_moved"]["lng"],
-                            my_site["coordinates_moved"]["lat"],
+                            site["coordinates_moved"]["lng"],
+                            site["coordinates_moved"]["lat"],
                         ),
                     ),
                     request,
                 )
 
-            # Because this is final approval, copy the data from the proposal to the approval
-            from disturbance.components.approvals.models import ApiarySiteOnApproval
-
+            # --- Prepare Approval Relations ---
             if apiary_site_on_proposal.site_status == SITE_STATUS_APPROVED:
-                # Create a relation between the approved apairy site and the approval
-                apiary_site_on_approval, asoa_created = ApiarySiteOnApproval.objects.get_or_create(
-                    apiary_site=a_site, approval=approval
-                )
-                apiary_site_on_approval.wkb_geometry = apiary_site_on_proposal.wkb_geometry_processed
-                apiary_site_on_approval.site_category = apiary_site_on_proposal.site_category_processed
-                apiary_site_on_approval.licensed_site = apiary_site_on_proposal.licensed_site
-                apiary_site_on_approval.batch_no = apiary_site_on_proposal.batch_no
-                apiary_site_on_approval.approval_cpc_date = apiary_site_on_proposal.approval_cpc_date
-                apiary_site_on_approval.approval_minister_date = apiary_site_on_proposal.approval_minister_date
-                apiary_site_on_approval.map_ref = apiary_site_on_proposal.map_ref
-                apiary_site_on_approval.forest_block = apiary_site_on_proposal.forest_block
-                apiary_site_on_approval.cog = apiary_site_on_proposal.cog
-                apiary_site_on_approval.roadtrack = apiary_site_on_proposal.roadtrack
-                apiary_site_on_approval.zone = apiary_site_on_proposal.zone
-                apiary_site_on_approval.catchment = apiary_site_on_proposal.catchment
-                apiary_site_on_approval.dra_permit = apiary_site_on_proposal.dra_permit
-                if asoa_created:
-                    apiary_site_on_approval.site_status = SITE_STATUS_CURRENT
-                apiary_site_on_approval.save()
+                asoa = asoa_by_site_id.get(site_id)
+                if not asoa:
+                    asoa = ApiarySiteOnApproval(
+                        apiary_site=a_site,
+                        approval=approval,
+                        site_status=SITE_STATUS_CURRENT,
+                    )
+                    asoa_to_create.append(asoa)
+                else:
+                    asoa_to_update.append(asoa)
+
+                asoa.wkb_geometry = apiary_site_on_proposal.wkb_geometry_processed
+                asoa.site_category = apiary_site_on_proposal.site_category_processed
+                asoa.licensed_site = apiary_site_on_proposal.licensed_site
+                asoa.batch_no = apiary_site_on_proposal.batch_no
+                asoa.approval_cpc_date = apiary_site_on_proposal.approval_cpc_date
+                asoa.approval_minister_date = apiary_site_on_proposal.approval_minister_date
+                asoa.map_ref = apiary_site_on_proposal.map_ref
+                asoa.forest_block = apiary_site_on_proposal.forest_block
+                asoa.cog = apiary_site_on_proposal.cog
+                asoa.roadtrack = apiary_site_on_proposal.roadtrack
+                asoa.zone = apiary_site_on_proposal.zone
+                asoa.catchment = apiary_site_on_proposal.catchment
+                asoa.dra_permit = apiary_site_on_proposal.dra_permit
+                if not asoa.site_status:
+                    asoa.site_status = SITE_STATUS_CURRENT
             else:
-                try:
-                    qs = ApiarySiteOnApproval.objects.filter(apiary_site=a_site, approval=approval)
-                    if qs:
-                        apiary_site_on_approval = qs[0]
-                        apiary_site_on_approval.delete()
-                except:
-                    pass
+                denied_site_ids.append(site_id)
+
+        # 3. BULK EXECUTION (4 fast queries total)
+        if proposal_relations_to_update:
+            ApiarySiteOnProposal.objects.bulk_update(
+                proposal_relations_to_update,
+                fields=[
+                    "licensed_site",
+                    "batch_no",
+                    "approval_cpc_date",
+                    "approval_minister_date",
+                    "map_ref",
+                    "forest_block",
+                    "cog",
+                    "roadtrack",
+                    "zone",
+                    "catchment",
+                    "dra_permit",
+                    "site_status",
+                    "workflow_selected_status",
+                    "wkb_geometry_processed",
+                ],
+            )
+
+        if sites_to_update:
+            ApiarySite.objects.bulk_update(
+                sites_to_update,
+                fields=[
+                    "is_vacant",
+                    "proposal_link_for_vacant",
+                    "approval_link_for_vacant",
+                ],
+            )
+
+        asoa_fields = [
+            "wkb_geometry",
+            "site_category",
+            "licensed_site",
+            "batch_no",
+            "approval_cpc_date",
+            "approval_minister_date",
+            "map_ref",
+            "forest_block",
+            "cog",
+            "roadtrack",
+            "zone",
+            "catchment",
+            "dra_permit",
+            "site_status",
+        ]
+
+        if asoa_to_create:
+            ApiarySiteOnApproval.objects.bulk_create(asoa_to_create)
+
+        if asoa_to_update:
+            ApiarySiteOnApproval.objects.bulk_update(asoa_to_update, fields=asoa_fields)
+
+        if denied_site_ids:
+            ApiarySiteOnApproval.objects.filter(apiary_site_id__in=denied_site_ids, approval=approval).delete()
 
 
 class SiteCategory(models.Model):
