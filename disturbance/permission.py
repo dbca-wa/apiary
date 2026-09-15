@@ -17,4 +17,4 @@ def organisation_permissions(request, org_id):
     user = request.user
 
     # Internal users can access any organisation, external users must be an organisation administrator
-    return is_internal(user) or (user.is_authenticated and organisation.can_user_edit(user.email))
+    return is_internal(request) or (user.is_authenticated and organisation.can_user_edit(user.email))
