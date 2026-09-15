@@ -739,7 +739,7 @@ export default {
           if (response.valid) {
             swal.fire({
               title: "Validate Pins",
-              text: "The pins you entered have been validated and your request will be processed by Organisation Administrator.",
+              text: "The pins you entered have been validated and your request will be processed by an organisation administrator.",
               icon: "success",
               customClass: {
                 confirmButton: "btn btn-primary",
