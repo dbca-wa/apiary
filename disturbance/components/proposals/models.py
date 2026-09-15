@@ -4098,7 +4098,7 @@ class ProposalApiary(RevisionedMixin):
 
         approval = None
         if self.proposal.application_type.name == ApplicationType.APIARY:
-            approval = self.retrieve_approval
+            approval = self.proposal.approval or self.retrieve_approval
         elif self.proposal.application_type.name == ApplicationType.SITE_TRANSFER:
             target_approval = self.target_approval
             originating_approval = self.originating_approval
