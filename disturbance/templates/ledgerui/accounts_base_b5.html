@@ -60,7 +60,15 @@
 {% endblock %}
 {% block additional_content %}
 <div id="nav-organisation-tab-page" style="display:none;">
-    <div id="app"></div>
+    <div id="app">
+        <div class="d-flex justify-content-center py-3">
+            <div class="spinner-border text-primary" style="width: 2rem; height: 2rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="d-flex justify-content-center align-items-center text-primary ms-2 fw-bold">Loading Organisation Management</div>
+        </div>
+        
+    </div>
 </div>
 
 <!--<script type="text/javascript" src="{% static 'disturbance_vue/js/chunk-vendors.js' %}?v={{GIT_COMMIT_HASH}}"></script>
