@@ -231,30 +231,27 @@ class Organisation(models.Model):
 
     @staticmethod
     def existence(abn, name=None):
-        exists = True
-        org = None
-        organisation_response = get_search_organisation(name, abn)
-        response_status = organisation_response.get("status", None)
+        """Check if an organisation exists and has active administrators."""
+        response = get_search_organisation(name, abn)
 
-        if response_status == status.HTTP_200_OK:
-            ledger_org = organisation_response.get("data", {})[0]
-            try:
-                org = Organisation.objects.get(organisation_id=ledger_org["organisation_id"])
-            except Organisation.DoesNotExist:
-                exists = False
-        else:
-            exists = False
+        if response.get("status") != status.HTTP_200_OK:
+            return {"exists": False}
 
-        if exists:
-            if not org.has_no_admins:
-                return {
-                    "exists": exists,
-                    "id": org.id,
-                    "first_five": org.first_five,
-                }
-            else:
-                return {"exists": not org.has_no_admins}
-        return {"exists": exists}
+        try:
+            # Safely grab the first item from the returned data list
+            ledger_data = response.get("data", [{}])[0]
+            org = Organisation.objects.get(organisation_id=ledger_data["organisation_id"])
+        except (IndexError, KeyError, Organisation.DoesNotExist):
+            return {"exists": False}
+
+        if org.has_no_admins:
+            return {"exists": False}
+
+        return {
+            "exists": True,
+            "id": org.id,
+            "first_five": org.first_five,
+        }
 
     def accept_user(self, user, request):
         with transaction.atomic():
