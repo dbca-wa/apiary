@@ -1,6 +1,6 @@
 # syntax = docker/dockerfile:1
 
-ARG BASE_IMAGE=ghcr.io/dbca-wa/docker-apps-dev:ubuntu_2604_base_python
+ARG BASE_IMAGE=ghcr.io/dbca-wa/docker-apps-dev:ubuntu_2604_base_python_node
 
 FROM ${BASE_IMAGE} AS builder
 
@@ -8,7 +8,6 @@ LABEL maintainer="asi@dbca.wa.gov.au"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Australia/Perth \
-    NODE_MAJOR=24 \
     PRODUCTION_EMAIL=True \
     SECRET_KEY="ThisisNotRealKey" \
     SYSTEM_NAME_SHORT="apiary" \
@@ -18,30 +17,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y \
-        build-essential \
-        ca-certificates \
-        curl \
-        git \
-        g++ \
-        python3-venv \
-        python3-dev \
-        wget \
-        gnupg \
-        libgdal-dev \
-        libproj-dev \
-        libpq-dev \
-        tzdata && \
+    g++ \
+    gnupg \
+    libgdal-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js and clean up in the same layer.
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" \
-    | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y nodejs && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g 5000 oim && useradd -g 5000 -u 5000 oim -s /bin/bash -d /app && \
     mkdir -p /app && chown -R oim:oim /app
@@ -65,7 +44,7 @@ COPY --chown=oim:oim disturbance ./disturbance
 
 # Build frontend
 RUN if [ -d /app/disturbance/frontend/disturbance ]; then \
-      cd /app/disturbance/frontend/disturbance && npm ci --omit=dev && npm run build && rm -rf node_modules; \
+    cd /app/disturbance/frontend/disturbance && npm ci --omit=dev && npm run build && rm -rf node_modules; \
     fi
 
 # Collect static files and prepare DB indexes
@@ -93,7 +72,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     CONTAINER_IMAGE_NAME=${IMAGE_NAME}
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y ca-certificates python3-uno run-one tzdata wget && \
     apt-get remove --purge -y binutils rust-coreutils git mtr patch vim 2>/dev/null || true && \
     apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
