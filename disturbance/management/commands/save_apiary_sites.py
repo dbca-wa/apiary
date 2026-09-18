@@ -22,19 +22,18 @@ from disturbance.components.proposals.serializers_apiary import (
 logger = logging.getLogger(__name__)
 
 
-def serialize_records_safely(serializer_class, queryset, label=""):
+def serialize_records(serializer_class, queryset, label=""):
     """
-    Serializes records one by one so a single failing record:
-    1. Does not abort the whole export.
-    2. Logs the exact failing record ID and traceback.
+    Serializes records using a single serializer instance for optimal speed,
+    while catching and logging any individual bad records.
     """
     features = []
     errors = []
+    serializer = serializer_class()
 
     for item in queryset:
         try:
-            # Single-instance serialization returns a single GeoJSON Feature
-            data = serializer_class(item).data
+            data = serializer.to_representation(item)
             features.append(data)
         except Exception as e:
             item_id = getattr(item, "id", "Unknown")
@@ -52,31 +51,30 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         cmd_name = self.__module__.split(".")[-1].replace("_", " ").upper()
         self.stdout.write(f"Starting {cmd_name}...")
-
         all_errors = []
         all_features = []
 
         try:
-            # 1. Retrieve 'vacant' sites
+            # 1. Retrieve and serialize 'vacant' sites
             qs_vacant_proposal, qs_vacant_approval = get_qs_vacant_site_for_export()
 
-            feat, errs = serialize_records_safely(
+            feat, errs = serialize_records(
                 ApiarySiteOnProposalDraftGeometryExportSerializer,
                 qs_vacant_proposal.filter(wkb_geometry_processed__isnull=True),
-                label="Vacant Proposal (Draft Geometry)",
+                label="Vacant Proposal (Draft)",
             )
             all_features.extend(feat)
             all_errors.extend(errs)
 
-            feat, errs = serialize_records_safely(
+            feat, errs = serialize_records(
                 ApiarySiteOnProposalProcessedGeometryExportSerializer,
                 qs_vacant_proposal.filter(wkb_geometry_processed__isnull=False),
-                label="Vacant Proposal (Processed Geometry)",
+                label="Vacant Proposal (Processed)",
             )
             all_features.extend(feat)
             all_errors.extend(errs)
 
-            feat, errs = serialize_records_safely(
+            feat, errs = serialize_records(
                 ApiarySiteOnApprovalGeometryExportSerializer,
                 qs_vacant_approval,
                 label="Vacant Approval",
@@ -84,17 +82,16 @@ class Command(BaseCommand):
             all_features.extend(feat)
             all_errors.extend(errs)
 
-            # 2. ApiarySiteOnProposal & ApiarySiteOnApproval
+            # 2. Query Proposal and Approval records
             _, qs_on_proposal_processed = get_qs_proposal_for_export()
             qs_on_approval = get_qs_approval_for_export()
 
-            # Exclude duplicates
-            qs_on_proposal_processed = qs_on_proposal_processed.exclude(
-                apiary_site__in=qs_on_approval.values("apiary_site")
-            )
+            # Exclude duplicate sites already on approvals
+            approval_site_ids = set(qs_on_approval.values_list("apiary_site_id", flat=True))
+            qs_on_proposal_processed = qs_on_proposal_processed.exclude(apiary_site_id__in=approval_site_ids)
 
-            # 3. Serialize Proposal & Approval
-            feat, errs = serialize_records_safely(
+            # 3. Serialize Proposal and Approval records
+            feat, errs = serialize_records(
                 ApiarySiteOnProposalProcessedGeometryExportSerializer,
                 qs_on_proposal_processed,
                 label="Proposal Processed",
@@ -102,7 +99,7 @@ class Command(BaseCommand):
             all_features.extend(feat)
             all_errors.extend(errs)
 
-            feat, errs = serialize_records_safely(
+            feat, errs = serialize_records(
                 ApiarySiteOnApprovalGeometryExportSerializer,
                 qs_on_approval,
                 label="Approval",
@@ -110,13 +107,12 @@ class Command(BaseCommand):
             all_features.extend(feat)
             all_errors.extend(errs)
 
-            # 4. Construct Final GeoJSON FeatureCollection
+            # 4. Save GeoJSON to file (Atomic write)
             export_data = {
                 "type": "FeatureCollection",
                 "features": all_features,
             }
 
-            # 5. Save to file (Atomic write)
             save_dir = Path(settings.BASE_DIR) / settings.SPATIAL_DATA_DIR
             save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -128,7 +124,7 @@ class Command(BaseCommand):
                 json.dump(export_data, fp)
             temp_file.replace(target_file)
 
-            # 6. Rotate files (keep latest 3)
+            # 5. Rotate files (keep latest 3)
             existing_files = sorted(
                 save_dir.glob("*-apiary-sites.json"),
                 key=lambda f: f.stat().st_mtime,
@@ -144,15 +140,16 @@ class Command(BaseCommand):
             logger.exception(f"Critical failure in {cmd_name}")
             all_errors.append(f"Critical execution error: {str(e)}")
 
-        # 7. Summary Reporting
-        if all_errors:
-            err_str = f'<strong style="color: red;">Errors: {len(all_errors)}</strong>'
-            self.stderr.write(self.style.ERROR(f"Completed with {len(all_errors)} error(s):"))
-            for err in all_errors:
-                self.stderr.write(self.style.WARNING(f"  - {err}"))
-        else:
-            err_str = '<strong style="color: green;">Errors: 0</strong>'
-            self.stdout.write(self.style.SUCCESS(f"Successfully exported {len(all_features)} sites with 0 errors."))
-
+        # Summary Reporting
+        err_str = (
+            f'<strong style="color: red;">Errors: {len(all_errors)}</strong>'
+            if all_errors
+            else '<strong style="color: green;">Errors: 0</strong>'
+        )
         msg = f"<p>{cmd_name} completed. {err_str}. ({len(all_features)} sites exported)</p>"
         logger.info(msg)
+
+        if all_errors:
+            self.stderr.write(self.style.ERROR(msg))
+        else:
+            self.stdout.write(self.style.SUCCESS(msg))
