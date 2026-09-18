@@ -1,76 +1,155 @@
-import datetime
 import json
-import os
-
-import pytz
-from django.core.management.base import BaseCommand
-
-from disturbance.components.approvals.serializers_apiary import ApiarySiteOnApprovalGeometryExportSerializer
-from disturbance.components.main.utils import get_qs_vacant_site_for_export, get_qs_proposal_for_export, get_qs_approval_for_export
-from disturbance.components.proposals.serializers_apiary import ApiarySiteOnProposalDraftGeometryExportSerializer, ApiarySiteOnProposalProcessedGeometryExportSerializer
-from disturbance.settings import BASE_DIR, SPATIAL_DATA_DIR, TIME_ZONE
-
 import logging
+from pathlib import Path
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from disturbance.components.approvals.serializers_apiary import (
+    ApiarySiteOnApprovalGeometryExportSerializer,
+)
+from disturbance.components.main.utils import (
+    get_qs_approval_for_export,
+    get_qs_proposal_for_export,
+    get_qs_vacant_site_for_export,
+)
+from disturbance.components.proposals.serializers_apiary import (
+    ApiarySiteOnProposalDraftGeometryExportSerializer,
+    ApiarySiteOnProposalProcessedGeometryExportSerializer,
+)
+
 logger = logging.getLogger(__name__)
 
 
-class Command(BaseCommand):
-    help = 'Save the apiary sites as a json file'
+def serialize_records(serializer_class, queryset, label=""):
+    """
+    Serializes records using a single serializer instance for optimal speed,
+    while catching and logging any individual bad records.
+    """
+    features = []
+    errors = []
+    serializer = serializer_class()
 
-    def handle(self, *args, **options):
+    for item in queryset:
         try:
-            errors =[]
-
-            # 1. Retrieve 'vacant' sites
-            qs_vacant_site_proposal, qs_vacant_site_approval = get_qs_vacant_site_for_export()
-            # qs_vacant_site_proposal may not have the wkb_geometry_processed if the apiary site is the selected 'vacant' site
-
-            serializer_vacant_proposal_d = ApiarySiteOnProposalDraftGeometryExportSerializer(qs_vacant_site_proposal.filter(wkb_geometry_processed__isnull=True), many=True)
-            serializer_vacant_proposal = ApiarySiteOnProposalProcessedGeometryExportSerializer(qs_vacant_site_proposal.filter(wkb_geometry_processed__isnull=False), many=True)
-            serializer_vacant_approval = ApiarySiteOnApprovalGeometryExportSerializer(qs_vacant_site_approval, many=True)
-
-            # 2. ApiarySiteOnProposal
-            qs_on_proposal_draft, qs_on_proposal_processed = get_qs_proposal_for_export()
-
-            # 3. ApiarySiteOnApproval
-            qs_on_approval = get_qs_approval_for_export()
-
-            # 4. Exclude the duplicated sites from the qs_on_proposal_processed
-            qs_on_proposal_processed = qs_on_proposal_processed.exclude(apiary_site__in=qs_on_approval.values('apiary_site'))
-
-            # 5. Serialize them
-            serializer_proposal_processed = ApiarySiteOnProposalProcessedGeometryExportSerializer(qs_on_proposal_processed, many=True)
-            serializer_approval = ApiarySiteOnApprovalGeometryExportSerializer(qs_on_approval, many=True)
-
-            # Merge all the data above
-            serializer_approval.data['features'].extend(serializer_proposal_processed.data['features'])
-            serializer_approval.data['features'].extend(serializer_vacant_proposal_d.data['features'])
-            serializer_approval.data['features'].extend(serializer_vacant_proposal.data['features'])
-            serializer_approval.data['features'].extend(serializer_vacant_approval.data['features'])
-
-            save_dir = os.path.join(BASE_DIR, SPATIAL_DATA_DIR)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-
-            datetime_local = datetime.datetime.now(pytz.timezone(TIME_ZONE)).strftime('%Y%m%d-%H%M%S')
-            file_path = os.path.join(save_dir, '{}-apiary-sites.json'.format(datetime_local))
-            with open(file_path, 'w') as fp:
-                json.dump(serializer_approval.data, fp)
-
-            files = os.listdir(save_dir)
-            files = sorted(files, reverse=True)  # sort by descending order
-            for file in files[3:]:
-                os.remove(os.path.join(save_dir, file))
-
+            data = serializer.to_representation(item)
+            features.append(data)
         except Exception as e:
-            err_msg = 'Error command {}'.format(__name__)
-            logger.error('{}\n{}'.format(err_msg, str(e)))
+            item_id = getattr(item, "id", "Unknown")
+            site_id = getattr(getattr(item, "apiary_site", None), "id", None)
+            err_msg = f"[{label}] Failed to serialize Record ID {item_id} (Apiary Site ID: {site_id}): {e}"
+            logger.error(err_msg, exc_info=True)
             errors.append(err_msg)
 
-        cmd_name = __name__.split('.')[-1].replace('_', ' ').upper()
-        err_str = '<strong style="color: red;">Errors: {}</strong>'.format(len(errors)) if len(errors)>0 else '<strong style="color: green;">Errors: 0</strong>'
-        msg = '<p>{} completed. {}.</p>'.format(cmd_name, err_str)
+    return features, errors
+
+
+class Command(BaseCommand):
+    help = "Save the apiary sites as a GeoJSON file"
+
+    def handle(self, *args, **options):
+        cmd_name = self.__module__.split(".")[-1].replace("_", " ").upper()
+        self.stdout.write(f"Starting {cmd_name}...")
+        all_errors = []
+        all_features = []
+
+        try:
+            # 1. Retrieve and serialize 'vacant' sites
+            qs_vacant_proposal, qs_vacant_approval = get_qs_vacant_site_for_export()
+
+            feat, errs = serialize_records(
+                ApiarySiteOnProposalDraftGeometryExportSerializer,
+                qs_vacant_proposal.filter(wkb_geometry_processed__isnull=True),
+                label="Vacant Proposal (Draft)",
+            )
+            all_features.extend(feat)
+            all_errors.extend(errs)
+
+            feat, errs = serialize_records(
+                ApiarySiteOnProposalProcessedGeometryExportSerializer,
+                qs_vacant_proposal.filter(wkb_geometry_processed__isnull=False),
+                label="Vacant Proposal (Processed)",
+            )
+            all_features.extend(feat)
+            all_errors.extend(errs)
+
+            feat, errs = serialize_records(
+                ApiarySiteOnApprovalGeometryExportSerializer,
+                qs_vacant_approval,
+                label="Vacant Approval",
+            )
+            all_features.extend(feat)
+            all_errors.extend(errs)
+
+            # 2. Query Proposal and Approval records
+            _, qs_on_proposal_processed = get_qs_proposal_for_export()
+            qs_on_approval = get_qs_approval_for_export()
+
+            # Exclude duplicate sites already on approvals
+            approval_site_ids = set(qs_on_approval.values_list("apiary_site_id", flat=True))
+            qs_on_proposal_processed = qs_on_proposal_processed.exclude(apiary_site_id__in=approval_site_ids)
+
+            # 3. Serialize Proposal and Approval records
+            feat, errs = serialize_records(
+                ApiarySiteOnProposalProcessedGeometryExportSerializer,
+                qs_on_proposal_processed,
+                label="Proposal Processed",
+            )
+            all_features.extend(feat)
+            all_errors.extend(errs)
+
+            feat, errs = serialize_records(
+                ApiarySiteOnApprovalGeometryExportSerializer,
+                qs_on_approval,
+                label="Approval",
+            )
+            all_features.extend(feat)
+            all_errors.extend(errs)
+
+            # 4. Save GeoJSON to file (Atomic write)
+            export_data = {
+                "type": "FeatureCollection",
+                "features": all_features,
+            }
+
+            save_dir = Path(settings.BASE_DIR) / settings.SPATIAL_DATA_DIR
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = timezone.localtime(timezone.now()).strftime("%Y%m%d-%H%M%S")
+            target_file = save_dir / f"{timestamp}-apiary-sites.json"
+            temp_file = target_file.with_suffix(".tmp")
+
+            with open(temp_file, "w") as fp:
+                json.dump(export_data, fp)
+            temp_file.replace(target_file)
+
+            # 5. Rotate files (keep latest 3)
+            existing_files = sorted(
+                save_dir.glob("*-apiary-sites.json"),
+                key=lambda f: f.stat().st_mtime,
+                reverse=True,
+            )
+            for old_file in existing_files[3:]:
+                try:
+                    old_file.unlink()
+                except OSError as e:
+                    logger.warning(f"Could not remove old file {old_file}: {e}")
+
+        except Exception as e:
+            logger.exception(f"Critical failure in {cmd_name}")
+            all_errors.append(f"Critical execution error: {str(e)}")
+
+        # Summary Reporting
+        err_str = (
+            f'<strong style="color: red;">Errors: {len(all_errors)}</strong>'
+            if all_errors
+            else '<strong style="color: green;">Errors: 0</strong>'
+        )
+        msg = f"<p>{cmd_name} completed. {err_str}. ({len(all_features)} sites exported)</p>"
         logger.info(msg)
-        print(msg) # will redirect to cron_tasks.log file, by the parent script
 
-
+        if all_errors:
+            self.stderr.write(self.style.ERROR(msg))
+        else:
+            self.stdout.write(self.style.SUCCESS(msg))
