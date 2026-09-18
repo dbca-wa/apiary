@@ -341,7 +341,7 @@ class ApiarySiteOnProposalDraftGeometryExportSerializer(ApiarySiteOnProposalDraf
     def get_organisation_name(self, relation):
         relevant_applicant = relation.proposal_apiary.proposal.relevant_applicant
         if isinstance(relevant_applicant, Organisation):
-            return relevant_applicant.organisation.name
+            return relevant_applicant.name
         else:
             return ''
 
@@ -500,7 +500,7 @@ class ApiarySiteOnProposalProcessedGeometryExportSerializer(ApiarySiteOnProposal
     def get_organisation_name(self, relation):
         relevant_applicant = relation.proposal_apiary.proposal.relevant_applicant
         if isinstance(relevant_applicant, Organisation):
-            return relevant_applicant.organisation.name
+            return relevant_applicant.name
         else:
             return ''
 
