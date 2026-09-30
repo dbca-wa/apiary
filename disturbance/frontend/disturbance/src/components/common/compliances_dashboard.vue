@@ -243,7 +243,6 @@ export default {
             vm.level == "external" ? "customer_status" : "processing_status",
           searchable: false, // There is a filter dropdown for 'Status'
           defaultContent: "",
-          orderable: false,
         },
       );
 
