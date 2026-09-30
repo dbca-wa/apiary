@@ -4,18 +4,18 @@
     Your Proposal {{ proposal.lodgement_number }} has been reviewed and requires an amendment before further assessment.
 
     {% if reason %}
-        <p>
-            <span>Amendment Reason: {{ reason }}</span>
-        </p>
+        Amendment Reason:
+        
+        {{ reason }}
     {% endif %}
 
     {% if amendment_request_text %}
-        <p><span> Amendment details: <br> {{ amendment_request_text }}</span></p>
+        Amendment details:
+        
+        {{ amendment_request_text }}
     {% endif %}
-    <p>
+
     You can access this Proposal using the following link:
-    </p>
+
     {{url}}
-
-
 {%  endblock %}

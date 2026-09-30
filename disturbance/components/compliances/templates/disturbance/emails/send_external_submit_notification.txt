@@ -6,10 +6,7 @@
 	Submitter: {{ compliance.submitter.get_full_name }}
 	Lodgement date: {{ compliance.lodgement_date }}
 
-    <p>
     You can access this Compliance using the following link:
-    </p>
+
     {{url}}
-
-
 {%  endblock %}
