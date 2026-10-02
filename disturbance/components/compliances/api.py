@@ -259,7 +259,8 @@ class ComplianceViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
     @action(detail=True,methods=['POST',])
     def delete_document(self, request, *args, **kwargs):
-        #TODO sec review: gate behind status/officer check
+        if instance.processing_status not in [instance.PROCESSING_STATUS_CHOICES[0][0], instance.PROCESSING_STATUS_CHOICES[1][0]]:
+            raise serializers.ValidationError("Compliance Request is not in the correct processing status: ", instance.processing_status)
         instance = self.get_object()
         doc=request.data.get('document')
         instance.delete_document(request, doc)

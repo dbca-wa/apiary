@@ -380,7 +380,6 @@ class ProposalPaginatedViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return self.paginator.get_paginated_response(serializer.data)
 
-#TODO sec review: determine what this is for and if it needs any status checks
 class OnSiteInformationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = OnSiteInformation.objects.filter(datetime_deleted=None)
     serializer_class = OnSiteInformationSerializer
