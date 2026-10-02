@@ -380,7 +380,7 @@ class ProposalPaginatedViewSet(viewsets.ReadOnlyModelViewSet):
         )
         return self.paginator.get_paginated_response(serializer.data)
 
-
+#TODO sec review: determine what this is for and if it needs any status checks
 class OnSiteInformationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = OnSiteInformation.objects.filter(datetime_deleted=None)
     serializer_class = OnSiteInformationSerializer
@@ -1512,7 +1512,7 @@ class ProposalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = request.data.copy()
+            request_data = {k: v for k, v in request.data.items() if k != 'files'}
             request_data["proposal"] = f"{instance.id}"
             request_data["staff"] = f"{request.user.id}"
             serializer = ProposalLogEntrySerializer(data=request_data)

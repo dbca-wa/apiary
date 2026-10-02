@@ -126,6 +126,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def accept_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -141,6 +142,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def accept_declined_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -156,6 +158,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def decline_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -171,7 +174,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def unlink_user(self, request, *args, **kwargs):
-        self.allow_external = True
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -187,6 +190,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def make_admin_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -202,6 +206,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def make_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -217,6 +222,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def make_consultant(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -232,6 +238,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def suspend_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -247,6 +254,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def reinstate_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -262,6 +270,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         ],
     )
     def relink_user(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         instance = self.get_object()
         serializer = OrgUserAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -319,7 +328,7 @@ class OrganisationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = request.data.copy()
+            request_data = {k: v for k, v in request.data.items() if k != 'files'}
             request_data["organisation"] = f"{instance.id}"
             request_data["staff"] = f"{request.user.id}"
             serializer = OrganisationLogEntrySerializer(data=request_data)
@@ -539,7 +548,7 @@ class OrganisationRequestsViewSet(viewsets.ReadOnlyModelViewSet, mixins.Retrieve
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = request.data.copy()
+            request_data = {k: v for k, v in request.data.items() if k != 'files'}
             request_data["request"] = f"{instance.id}"
             request_data["staff"] = f"{request.user.id}"
             serializer = OrganisationRequestCommsSerializer(data=request_data)
@@ -635,6 +644,7 @@ class OrganisationContactViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMi
 
     def destroy(self, request, *args, **kwargs):
         """delete an Organisation contact"""
+        #TODO sec review: org admins only
         num_admins = self.get_object().organisation.contacts.filter(is_admin=True).count()
         org_contact = self.get_object().organisation.contacts.get(id=kwargs["pk"])
         if num_admins == 1 and org_contact.is_admin:
@@ -642,6 +652,7 @@ class OrganisationContactViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMi
         return super().destroy(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
+        #TODO sec review: org admins only
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
