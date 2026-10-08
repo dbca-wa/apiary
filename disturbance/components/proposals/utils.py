@@ -26,7 +26,7 @@ from disturbance.components.proposals.serializers_apiary import (
     ApiarySiteOnProposalDraftGeometrySaveSerializer
 )
 from disturbance.components.proposals.email import send_submit_email_notification, send_external_submit_email_notification
-from disturbance.components.organisations.models import Organisation
+from disturbance.components.organisations.models import Organisation, OrganisationContact
 
 import traceback
 import os
@@ -1372,7 +1372,13 @@ def proposal_submit_apiary(proposal, request):
         if proposal.can_user_edit:
 
             if request.user and isinstance(request.user,EmailUser):
-                proposal.submitter = request.user
+                if request.user and isinstance(request.user,EmailUser):
+                    if not proposal.submitter:
+                        proposal.submitter = request.user #NOTE: submitter should already be set
+                    #Same org, different submitter
+                    if proposal.applicant:
+                        if OrganisationContact.objects.filter(organisation=proposal.applicant,email=request.user.email).exists():
+                            proposal.submitter = request.user
 
             proposal.lodgement_date = timezone.now()
             proposal.training_completed = True

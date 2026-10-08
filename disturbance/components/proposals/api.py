@@ -50,7 +50,7 @@ from disturbance.components.main.utils import (
     get_template_group,
     remove_html_tags,
 )
-from disturbance.components.organisations.models import Organisation
+from disturbance.components.organisations.models import Organisation, OrganisationContact
 from disturbance.components.proposals.models import (
     AmendmentReason,
     AmendmentRequest,
@@ -379,7 +379,6 @@ class ProposalPaginatedViewSet(viewsets.ReadOnlyModelViewSet):
             many=True,
         )
         return self.paginator.get_paginated_response(serializer.data)
-
 
 class OnSiteInformationViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     queryset = OnSiteInformation.objects.filter(datetime_deleted=None)
@@ -1512,7 +1511,7 @@ class ProposalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = request.data.copy()
+            request_data = {k: v for k, v in request.data.items() if k != 'files'}
             request_data["proposal"] = f"{instance.id}"
             request_data["staff"] = f"{request.user.id}"
             serializer = ProposalLogEntrySerializer(data=request_data)
@@ -1623,7 +1622,13 @@ class ProposalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         if instance.customer_status == Proposal.CUSTOMER_STATUS_DRAFT:
             save_proponent_data(instance, request, self)
             # Submitter and lodgement log set here - if payment fails we should still log this and submitter can be overridden later if necessary
-            instance.submitter = request.user
+            if request.user and isinstance(request.user,EmailUser):
+                if not instance.submitter:
+                    instance.submitter = request.user #NOTE: submitter should already be set
+                #Same org, different submitter
+                if instance.applicant:
+                    if OrganisationContact.objects.filter(organisation=instance.applicant,email=request.user.email).exists():
+                        instance.submitter = request.user
             instance.log_user_action(
                 ProposalUserAction.ACTION_LODGE_APPLICATION.format(instance.lodgement_number),
                 request,
@@ -2005,6 +2010,7 @@ class ProposalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
             proposal_type = qs_proposal_type.get(name=application_type.name)
             applicant = None
             proxy_applicant = None
+            submitter = None
             if request.data.get("behalf_of") == "individual":
                 # Validate User for Individual applications
                 request_user = EmailUser.objects.get(id=request.user.id)
@@ -2012,12 +2018,40 @@ class ProposalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
                     raise ValidationError("null_applicant_address")
                 # Assign request.user as applicant
                 proxy_applicant = request.user.id
+                submitter = request.user.id 
+            elif request.data.get("behalf_of") == "external" and is_internal(request):
+                try:
+                    external_applicant = request.data.get("external_applicant")
+                    if external_applicant["entity_type"] == "user":
+                        #if user specified, set proxy applicant after validating residential address
+                        #otherwise, set applicant to org id
+                        request_user = EmailUser.objects.get(id=external_applicant["id"])
+                        if not request_user.residential_address:
+                            raise ValidationError("null_applicant_address")
+                        # Assign request.user as applicant
+                        proxy_applicant = external_applicant["id"]
+                        submitter = external_applicant["id"]
+                    else:
+                        org_admins = OrganisationContact.objects.filter(organisation_id=external_applicant["id"],is_admin=True)
+                        organisation = Organisation.objects.get(id=external_applicant["id"])
+                        #if the organisation has an email and the email belongs to an organisation admin, prioritise that, otherwise pick first on the list
+                        ledger_org = organisation.organisation
+                        if 'organisation_email' in ledger_org and ledger_org['organisation_email']:
+                            if org_admins.filter(email=ledger_org['organisation_email']).exists():
+                                submitter = EmailUser.objects.get(email=ledger_org['organisation_email']).id
+                        else:
+                            submitter = EmailUser.objects.get(email=org_admins.first().email).id
+                        applicant = external_applicant["id"]
+                except Exception as e:
+                    print(e)
+                    raise serializers.ValidationError("Invalid External Applicant Data")
             else:
                 applicant = request.data.get("behalf_of")
+                submitter = request.user.id 
 
             data = {
                 "schema": proposal_type.schema,
-                "submitter": request.user.id,
+                "submitter": submitter,
                 "applicant": applicant,
                 "proxy_applicant": proxy_applicant,
                 "application_type": application_type.id,

@@ -23,6 +23,7 @@ import modal from "@vue-utils/bootstrap-modal.vue";
 import datatable from "@vue-utils/datatable.vue";
 import { constants } from "@/utils/hooks";
 import { v4 as uuid } from "uuid";
+
 export default {
   name: "Show-Actions",
   components: {
@@ -44,9 +45,14 @@ export default {
         language: {
           processing: constants.DATATABLE_PROCESSING_HTML,
         },
+        // Disable responsive mode and enable scrollX with fixed columns
         responsive: false,
-        deferRender: true,
         scrollX: true,
+        fixedColumns: {
+          leftColumns: 1,
+        },
+        deferRender: true,
+        autowidth: true,
         order: [[3, "desc"]], // order the non-formatted date as a hidden column
         dom:
           "<'row'<'col-sm-4'l><'col-sm-8'f>>" +

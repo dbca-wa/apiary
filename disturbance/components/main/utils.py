@@ -1078,63 +1078,82 @@ def get_qs_vacant_site_for_export():
 
     qs_vacant_site = _get_vacant_apiary_site()
 
-    # apiary_site_proposal_ids = qs_vacant_site.all().values('proposal_link_for_vacant__id')
-    apiary_site_proposal_ids = qs_vacant_site.all().values("latest_proposal_link__id")
-    # When the 'vacant' site is selected, saved, deselected and then saved again, the latest_proposal_link gets None
-    # That's why we need following line too to pick up all the vacant sites
-    apiary_site_proposal_ids2 = qs_vacant_site.filter(latest_proposal_link__isnull=True).values(
-        "proposal_link_for_vacant__id"
-    )
-    qs_vacant_site_proposal = ApiarySiteOnProposal.objects.filter(
-        Q(id__in=apiary_site_proposal_ids) | Q(id__in=apiary_site_proposal_ids2)
+    # 1. Collect Proposal Link IDs (excluding NULLs)
+    latest_proposal_ids = qs_vacant_site.filter(latest_proposal_link__isnull=False).values_list(
+        "latest_proposal_link_id", flat=True
     )
 
-    # At any moment, either approval_link_for_vacant or proposal_link_for_vacant is True at most.  Never both are True.  (See make_vacant() method of the ApiarySite model)
-    # Therefore qs_vacant_site_proposal and qs_vacant_site_approval shouldn't overlap each other
-    apiary_site_approval_ids = qs_vacant_site.all().values("approval_link_for_vacant__id")
-    qs_vacant_site_approval = ApiarySiteOnApproval.objects.filter(id__in=apiary_site_approval_ids)
+    fallback_proposal_ids = qs_vacant_site.filter(
+        latest_proposal_link__isnull=True,
+        proposal_link_for_vacant__isnull=False,
+    ).values_list("proposal_link_for_vacant_id", flat=True)
+
+    # Combine both ID sets
+    proposal_link_ids = set(latest_proposal_ids) | set(fallback_proposal_ids)
+
+    # 2. Collect Approval Link IDs (excluding NULLs)
+    approval_link_ids = qs_vacant_site.filter(approval_link_for_vacant__isnull=False).values_list(
+        "approval_link_for_vacant_id", flat=True
+    )
+
+    # 3. Querysets with pre-joined relations
+    qs_vacant_site_proposal = ApiarySiteOnProposal.objects.filter(id__in=proposal_link_ids).select_related(
+        "apiary_site",
+        "site_category_draft",
+        "proposal_apiary__proposal",
+    )
+
+    qs_vacant_site_approval = ApiarySiteOnApproval.objects.filter(id__in=approval_link_ids).select_related(
+        "apiary_site",
+        "site_category",
+        "approval",
+    )
 
     return qs_vacant_site_proposal, qs_vacant_site_approval
 
 
 def get_qs_proposal_for_export():
-    from disturbance.components.proposals.models import ApiarySite, ApiarySiteOnProposal
-
-    # 1. ApiarySiteOnProposal
-    q_include_proposal = Q()
-    q_exclude_proposal = Q()
-
-    # 1.1. Include
-    q_include_proposal &= Q(
-        id__in=(ApiarySite.objects.all().values("latest_proposal_link__id"))
-    )  # Include only the intermediate objects which are on the ApiarySite.latest_proposal_links
-
-    # 1.2. Exclude
-    # q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_DRAFT,)) & Q(making_payment=False)  # Exclude pure 'draft' site
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_DRAFT,))  # For this purpose, we don't want 'draft' sites.
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_DISCARDED,))
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_PENDING,))  # For this purpose, we don't want 'pending' sites.
-    q_exclude_proposal |= Q(
-        site_status__in=(SITE_STATUS_APPROVED,)
-    )  # 'approved' site is included in the approval as a 'current'
-    # The followings should not exclude any records because ApiarySiteOnProposal should not be in these statuses, but added just in case there are.
-    # Otherwise, sites might be picked up multiple times.
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_CURRENT,))
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_NOT_TO_BE_REISSUED,))
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_SUSPENDED,))
-    q_exclude_proposal |= Q(site_status__in=(SITE_STATUS_TRANSFERRED,))
-    q_exclude_proposal |= Q(
-        apiary_site__in=ApiarySite.objects.filter(is_vacant=True)
-    )  # Vacant sites are already picked up above.  We don't want to pick up them again here.
-
-    # 1.4. Issue query
-    qs_on_proposal = (
-        ApiarySiteOnProposal.objects.filter(q_include_proposal).exclude(q_exclude_proposal).distinct("apiary_site")
+    from disturbance.components.proposals.models import (
+        ApiarySite,
+        ApiarySiteOnProposal,
     )
-    qs_on_proposal_processed = qs_on_proposal.exclude(wkb_geometry_processed=None)
-    qs_on_proposal_draft = qs_on_proposal.filter(
-        wkb_geometry_processed=None
-    )  # For the 'draft' apiary sites with the making_payment=True attribute
+
+    # 1. Non-null latest_proposal_link IDs
+    latest_proposal_link_ids = ApiarySite.objects.filter(latest_proposal_link__isnull=False).values_list(
+        "latest_proposal_link_id", flat=True
+    )
+
+    # 2. Consolidated excluded statuses
+    excluded_statuses = [
+        SITE_STATUS_DRAFT,
+        SITE_STATUS_DISCARDED,
+        SITE_STATUS_PENDING,
+        SITE_STATUS_APPROVED,
+        SITE_STATUS_CURRENT,
+        SITE_STATUS_NOT_TO_BE_REISSUED,
+        SITE_STATUS_SUSPENDED,
+        SITE_STATUS_TRANSFERRED,
+    ]
+
+    # 3. Base Queryset with pre-fetched relations
+    qs_on_proposal = (
+        ApiarySiteOnProposal.objects.filter(id__in=latest_proposal_link_ids)
+        .exclude(Q(apiary_site__is_vacant=True) | Q(site_status__in=excluded_statuses))
+        .select_related(
+            "apiary_site",
+            "site_category_draft",
+            "proposal_apiary__proposal",
+            # Preload applicant relation if applicable on Proposal model, e.g.:
+            # "proposal_apiary__proposal__applicant",
+            # "proposal_apiary__proposal__org_applicant",
+        )
+        .order_by("apiary_site_id", "-id")
+        .distinct("apiary_site_id")
+    )
+
+    # 4. Split processed and draft geometries using Django isnull lookups
+    qs_on_proposal_processed = qs_on_proposal.filter(wkb_geometry_processed__isnull=False)
+    qs_on_proposal_draft = qs_on_proposal.filter(wkb_geometry_processed__isnull=True)
 
     return qs_on_proposal_draft, qs_on_proposal_processed
 
@@ -1143,32 +1162,38 @@ def get_qs_approval_for_export():
     from disturbance.components.approvals.models import ApiarySiteOnApproval
     from disturbance.components.proposals.models import ApiarySite
 
-    q_include_approval = Q()
-    q_exclude_approval = Q()
+    # 1. Get non-null latest_approval_link IDs
+    latest_link_ids = ApiarySite.objects.filter(latest_approval_link__isnull=False).values_list(
+        "latest_approval_link_id", flat=True
+    )
 
+    # 2. Get vacant sites
     qs_vacant_site = _get_vacant_apiary_site()
 
-    # 2.1. Include
-    q_include_approval &= Q(
-        id__in=(ApiarySite.objects.all().values("latest_approval_link__id"))
-    )  # Include only the intermediate objects which are on the ApiarySite.latest_approval_links
+    # 3. Excluded statuses in a single IN clause
+    excluded_statuses = [
+        SITE_STATUS_TRANSFERRED,
+        SITE_STATUS_DRAFT,
+        SITE_STATUS_PENDING,
+        SITE_STATUS_APPROVED,
+        SITE_STATUS_DENIED,
+        SITE_STATUS_DISCARDED,
+    ]
 
-    # 2.2. Exclude
-    q_exclude_approval |= Q(
-        apiary_site__in=qs_vacant_site
-    )  # We don't want to pick up the vacant sites already retrieved above
-    q_exclude_approval |= Q(site_status=SITE_STATUS_TRANSFERRED)
-    # The followings should not exclude any records because ApiarySiteOnApproval should not be in these statuses, but added just in case there are.
-    # Otherwise, sites might be picked up multiple times.
-    q_exclude_approval |= Q(site_status=SITE_STATUS_DRAFT)
-    q_exclude_approval |= Q(site_status=SITE_STATUS_PENDING)
-    q_exclude_approval |= Q(site_status=SITE_STATUS_APPROVED)
-    q_exclude_approval |= Q(site_status=SITE_STATUS_DENIED)
-    q_exclude_approval |= Q(site_status=SITE_STATUS_DISCARDED)
-
-    # 2.3. Issue query
+    # 4. Construct queryset with pre-joined relations
     qs_on_approval = (
-        ApiarySiteOnApproval.objects.filter(q_include_approval).exclude(q_exclude_approval).distinct("apiary_site")
+        ApiarySiteOnApproval.objects.filter(id__in=latest_link_ids)
+        .exclude(Q(apiary_site__in=qs_vacant_site) | Q(site_status__in=excluded_statuses))
+        .select_related(
+            "apiary_site",
+            "site_category",
+            "approval",
+            # Preload applicant relations if applicable on your Approval model, e.g.:
+            # "approval__applicant",
+            # "approval__org_applicant",
+        )
+        .order_by("apiary_site_id", "-id")
+        .distinct("apiary_site_id")
     )
 
     return qs_on_approval

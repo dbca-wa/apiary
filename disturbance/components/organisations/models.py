@@ -842,6 +842,7 @@ class OrganisationRequest(SanitiseFileMixin):
 
             # Create Organisation in apiary
             org, created = Organisation.objects.get_or_create(organisation_id=ledger_org["organisation_id"])
+            org.update_property_cache()
             # org.generate_pins()
             # Link requester to organisation
             delegate, created = UserDelegation.objects.get_or_create(user=self.requester, organisation=org)

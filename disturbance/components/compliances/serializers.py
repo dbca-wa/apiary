@@ -20,7 +20,6 @@ class ComplianceSerializer(serializers.ModelSerializer):
     customer_status = serializers.CharField(source='get_customer_status_display')
     submitter = serializers.SerializerMethodField(read_only=True)
     documents = serializers.SerializerMethodField()
-    submitter = serializers.SerializerMethodField(read_only=True)
     allowed_assessors = EmailUserSerializer(many=True)
     assigned_to = serializers.SerializerMethodField(read_only=True)
     requirement = serializers.CharField(source='requirement.requirement', required=False, allow_null=True)

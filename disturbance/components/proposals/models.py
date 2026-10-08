@@ -43,7 +43,7 @@ from disturbance.components.main.models import (
     private_storage,
 )
 from disturbance.components.main.utils import get_department_user
-from disturbance.components.organisations.models import Organisation
+from disturbance.components.organisations.models import Organisation, OrganisationContact
 from disturbance.components.proposals.email import (
     send_amendment_email_notification,
     send_apiary_referral_complete_email_notification,
@@ -1436,7 +1436,13 @@ class Proposal(DirtyFieldsMixin, RevisionedMixin):
                         error_text = "The proposal has these missing fields, {}".format(",".join(missing_fields))
                         raise exceptions.ProposalMissingFields(detail=error_text)
 
-                self.submitter = request.user
+                if request.user and isinstance(request.user,EmailUser):
+                    if not self.submitter:
+                        self.submitter = request.user #NOTE: submitter should already be set
+                    #Same org, different submitter
+                    if self.applicant:
+                        if OrganisationContact.objects.filter(organisation=self.applicant,email=request.user.email).exists():
+                            self.submitter = request.user
                 self.lodgement_date = timezone.now()
                 if self.amendment_requests:
                     qs = self.amendment_requests.filter(status="requested")
@@ -2548,7 +2554,15 @@ class Proposal(DirtyFieldsMixin, RevisionedMixin):
                         proposal = clone_proposal_with_status_reset(previous_proposal)
 
                     proposal.proposal_type = "renewal"
-                    proposal.submitter = request.user
+                    #only set a new submitter if the submitter is a member of the same organisation or submitter is not set
+                    if not previous_proposal.submitter:
+                        proposal.submitter = request.user
+                    else:
+                        proposal.submitter = previous_proposal.submitter
+                    #Same org, different submitter
+                    if previous_proposal.applicant:
+                        if OrganisationContact.objects.filter(organisation=previous_proposal.applicant,email=request.user.email).exists():
+                            proposal.submitter = request.user
                     proposal.previous_application = self
                     if not previous_proposal.apiary_group_application_type:
                         # for Apiary, we copy requirements in the clone method above
@@ -2622,7 +2636,15 @@ class Proposal(DirtyFieldsMixin, RevisionedMixin):
                 previous_proposal = Proposal.objects.get(id=self.id)
                 proposal = clone_proposal_with_status_reset(previous_proposal)
                 proposal.proposal_type = "amendment"
-                proposal.submitter = request.user
+                #only set a new submitter if the submitter is a member of the same organisation or submitter is not set
+                if not previous_proposal.submitter:
+                    proposal.submitter = request.user
+                else:
+                    proposal.submitter = previous_proposal.submitter
+                #Same org, different submitter
+                if previous_proposal.applicant:
+                    if OrganisationContact.objects.filter(organisation=previous_proposal.applicant,email=request.user.email).exists():
+                        proposal.submitter = request.user
                 proposal.previous_application = self
                 # copy all the requirements from the previous proposal
                 req = self.requirements.all().exclude(is_deleted=True)

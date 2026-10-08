@@ -3,6 +3,7 @@
     <div class="row">
       <h3>Application: {{ proposal.lodgement_number }}</h3>
       <h4 class="mb-3">Application Type: {{ proposal.activity }}</h4>
+      <strong class="mb-3"><small>External view/edit <a :href="`/external/proposal/`+proposal.id">here</a></small></strong>
       <div v-if="!proposal.apiary_group_application_type">
         <h4 class="mb-3">Approval Level: {{ proposal.approval_level }}</h4>
       </div>

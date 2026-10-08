@@ -61,6 +61,23 @@
                       an associated Organisation. First add an Organisation.
                     </p>
                   </div>
+                  <div v-if="profile.is_internal">
+                    <input
+                          type="radio"
+                          name="behalf_of_external"
+                          v-model="behalf_of"
+                          value="external"
+                        />
+                        <label>&nbsp;On behalf of an external user or organisation</label>
+                  </div>
+                </div>
+                <div v-show="behalf_of == 'external'">
+                  <select 
+                    id="person_lookup"  
+                    name="person_lookup"  
+                    ref="person_lookup" 
+                    class="form-control" 
+                  ></select>
                 </div>
               </div>
             </div>
@@ -306,7 +323,7 @@
           <div class="col-sm-12">
             <button
               v-if="!creatingProposal"
-              :disabled="isDisabled()"
+              :disabled="isDisabled"
               @click.prevent="submit()"
               class="btn btn-primary float-end"
             >
@@ -325,12 +342,14 @@
 import { v4 as uuid } from "uuid";
 import { api_endpoints } from "@/utils/hooks";
 import utils from "./utils";
+import $ from 'jquery'
 export default {
   data: function () {
     return {
       proposal: null,
       agent: {},
       behalf_of: "",
+      external_applicant: "",
       profile: {
         disturbance_organisations: [],
       },
@@ -387,7 +406,10 @@ export default {
     },
     currentApiaryApproval: function () {
       let currentApproval = null;
-      if (
+
+      if (this.behalf_of === "external" && this.external_applicant !== "") {
+        currentApproval = this.external_applicant.current_apiary_approval;
+      } else if (
         this.behalf_of === "individual" &&
         this.profile.current_apiary_approval
       ) {
@@ -406,7 +428,9 @@ export default {
     },
     currentApiaryButtonDisabled: function () {
       let currentDisabled = null;
-      if (
+      if (this.behalf_of === "external" && this.external_applicant !== "") {
+        this.external_applicant.open_proposal
+      } else if (
         this.behalf_of === "individual" &&
         this.profile.existing_record_text.disable_radio_button
       ) {
@@ -424,6 +448,7 @@ export default {
 
     applicationTypesList: function () {
       let returnList = [];
+      //TODO update list for external user behalf
       for (let applicationType of this.application_types) {
         if (applicationType.domain_used.toLowerCase() === "apiary") {
           if (
@@ -464,7 +489,8 @@ export default {
       if (
         vm.behalf_of === "" ||
         vm.behalf_of === "other" ||
-        vm.behalf_of === "individual"
+        vm.behalf_of === "individual" ||
+        vm.behalf_of === "external"
       ) {
         // pass
       } else {
@@ -477,6 +503,29 @@ export default {
     manyDistricts: function () {
       return this.districts.length > 1;
     },
+    isDisabled: function () {
+      let vm = this;
+      if (
+        !["Apiary", "Site Transfer", "Temporary Use"].includes(
+          vm.selected_application_name,
+        )
+      ) {
+        if (
+          vm.behalf_of == "" || (vm.behalf_of == "external" && vm.external_applicant == "") ||
+          vm.selected_application_id == "" ||
+          vm.selected_region == "" ||
+          vm.approval_level == ""
+        ) {
+          return true;
+        }
+      } else {
+        if (vm.behalf_of == "" || (vm.behalf_of == "external" && vm.external_applicant == "") || vm.selected_application_id == "") {
+          return true;
+        }
+      }
+  
+      return false;
+    },
   },
   watch: {
     applicationTypesList: function (list) {
@@ -485,8 +534,50 @@ export default {
         this.chainedSelectAppType(list[0].value);
       }
     },
+    behalf_of(newVal) {
+        if (newVal === 'external') {
+            this.$nextTick(() => {
+                this.initialisePersonLookup();
+            });
+        }
+    }
   },
   methods: {
+    initialisePersonLookup: function(){
+      let vm = this;
+      const $el = $(vm.$refs.person_lookup);
+      if (!$el.hasClass("select2-hidden-accessible")) {
+        $el.select2({
+            minimumInputLength: 2,
+            "theme": "bootstrap-5",
+            allowClear: true,
+            placeholder:"Select Person or Organisation",
+            ajax: {
+                url: api_endpoints.person_org_lookup,
+                dataType: 'json',
+                data: function(params) {
+                    var query = {
+                        term: params.term,
+                        option: "starts_with",
+                        type: 'public',
+                    }
+                    return query;
+                },
+            },
+        }).
+        on("select2:select", function (e) {
+            vm.external_applicant = Object.assign({}, e.params.data);
+            console.log(vm.external_applicant)
+        }).
+        on("select2:unselect",function () {
+            vm.external_applicant = {};
+        }).
+        on("select2:open",function () {
+            const searchField = $('[aria-controls="select2-person_lookup-results"]')
+            searchField[0].focus();
+        });
+      }
+    },
     submit: function () {
       let vm = this;
       let text;
@@ -500,6 +591,13 @@ export default {
           this.alertText() +
           " proposal on behalf of " +
           this.profile.full_name +
+          " ?";
+      } else if (this.behalf_of === "external") {
+        text =
+          "Are you sure you want to create " +
+          this.alertText() +
+          " proposal on behalf of " +
+          this.external_applicant.text +
           " ?";
       } else {
         text =
@@ -566,6 +664,7 @@ export default {
 
       const payload = {
         behalf_of: vm.behalf_of,
+        external_applicant: vm.external_applicant, 
         application: vm.selected_application_id,
         region: vm.selected_region,
         district: vm.selected_district,
@@ -648,29 +747,6 @@ export default {
       } finally {
         vm.creatingProposal = false;
       }
-    },
-    isDisabled: function () {
-      let vm = this;
-
-      if (
-        !["Apiary", "Site Transfer", "Temporary Use"].includes(
-          vm.selected_application_name,
-        )
-      ) {
-        if (
-          vm.behalf_of == "" ||
-          vm.selected_application_id == "" ||
-          vm.selected_region == "" ||
-          vm.approval_level == ""
-        ) {
-          return true;
-        }
-      } else {
-        if (vm.behalf_of == "" || vm.selected_application_id == "") {
-          return true;
-        }
-      }
-      return false;
     },
     fetchRegions: function () {
       let vm = this;
@@ -975,6 +1051,7 @@ export default {
     vm.fetchRegions();
     vm.fetchApplicationTypes();
     vm.fetchActivityMatrix();
+    vm.initialisePersonLookup();
     vm.form = document.forms.new_proposal;
   },
   beforeRouteEnter: function (to, from, next) {

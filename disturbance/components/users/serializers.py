@@ -124,6 +124,7 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     current_apiary_approval = serializers.SerializerMethodField()
     existing_record_text = serializers.SerializerMethodField()
+    is_internal = serializers.SerializerMethodField()
 
     class Meta:
         model = EmailUser
@@ -142,7 +143,12 @@ class UserSerializer(serializers.ModelSerializer):
             'full_name',
             'current_apiary_approval',
             'existing_record_text',
+            'is_internal',
         )
+
+    def get_is_internal(self, obj):
+        request = self.context.get('request')
+        return is_internal(request)
 
     def get_current_apiary_approval(self, obj):
         approval = obj.disturbance_proxy_approvals.filter(status__in=[Approval.STATUS_CURRENT, Approval.STATUS_SUSPENDED], apiary_approval=True).first()

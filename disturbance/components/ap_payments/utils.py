@@ -421,7 +421,7 @@ def checkout(
         'no_payment': False,
     }
 
-    email_user_id = proposal.submitter_id if proxy or request.user.is_anonymous else request.user.id
+    email_user_id = proposal.submitter_id
     basket_hash = create_basket_session(request, email_user_id, basket_params)
 
     external_url = settings.APIARY_EXTERNAL_URL if settings.APIARY_EXTERNAL_URL.startswith('http') else request.build_absolute_uri('/').rstrip('/')

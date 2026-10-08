@@ -177,6 +177,10 @@ api_patterns = [
         GeocodingAddressSearchView.as_view(),
         name="geocoding_address_search",
     ),
+    re_path(
+        r'^api/person_org_lookup$', 
+        users_api.GetPersonOrg.as_view(),
+        name='get-person-org'),
 ]
 
 # URL Patterns
