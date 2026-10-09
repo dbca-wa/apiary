@@ -4,8 +4,19 @@ openssl rand -hex 32 > /app/git_hash
 
 # Start unoserver if either web or cron might generate PDF documents
 if [ "$ENABLE_WEB" == "True" ] || [ "$ENABLE_CRON" == "True" ]; then
-    echo "Starting Unoserver daemon"
-    unoserver &
+    echo "Starting Unoserver daemon..."
+
+    if [ ! -f "/opt/libreoffice/program/soffice" ]; then
+        echo "ERROR: LibreOffice executable not found at /opt/libreoffice/program/soffice" >&2
+        exit 1
+    fi
+
+    if ! command -v unoserver &> /dev/null; then
+        echo "ERROR: 'unoserver' command not found" >&2
+        exit 1
+    fi
+    
+    /opt/libreoffice/program/python -m unoserver.server --executable /opt/libreoffice/program/soffice &
 fi
 
 if [ "$ENABLE_CRON" == "True" ]; then
