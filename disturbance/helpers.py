@@ -1,6 +1,60 @@
 import logging
 from urllib.parse import urlparse, urlunparse
 
+# These functionare here to avoid circular import
+
+
+def _normalize_host(value):
+    """Extract and normalize host/netloc whether given as 'host.com' or 'https://host.com'."""
+    if not value:
+        return None
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    return parsed.netloc.lower()
+
+
+def convert_external_url_to_internal_url(url):
+    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    # If missing, disabled, or identical (e.g. local dev), return unchanged
+    if not ext_host or not int_host or ext_host == int_host:
+        return url
+
+    parsed = urlparse(url)
+
+    # 1. Exact match on netloc
+    if parsed.netloc.lower() == ext_host:
+        return urlunparse(parsed._replace(netloc=int_host))
+
+    # 2. Match hostname when URL has a port not defined in the ENV
+    if parsed.hostname and parsed.hostname.lower() == ext_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in int_host else ""
+        return urlunparse(parsed._replace(netloc=f"{int_host}{port_suffix}"))
+
+    return url
+
+
+def convert_internal_url_to_external_url(url):
+    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    if not ext_host or not int_host or ext_host == int_host:
+        return url
+
+    parsed = urlparse(url)
+
+    # 1. Exact match on netloc
+    if parsed.netloc.lower() == int_host:
+        return urlunparse(parsed._replace(netloc=ext_host))
+
+    # 2. Match hostname when URL has a port not defined in the ENV
+    if parsed.hostname and parsed.hostname.lower() == int_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in ext_host else ""
+        return urlunparse(parsed._replace(netloc=f"{ext_host}{port_suffix}"))
+
+    return url
+
+
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.cache import cache
@@ -230,54 +284,3 @@ def get_cached_ledger_organisation(organisation_id):
     will only trigger one network call.
     """
     return get_organisation(organisation_id).get("data")
-
-
-def _normalize_host(value):
-    """Extract and normalize host/netloc whether given as 'host.com' or 'https://host.com'."""
-    if not value:
-        return None
-    parsed = urlparse(value if "://" in value else f"//{value}")
-    return parsed.netloc.lower()
-
-
-def convert_external_url_to_internal_url(url):
-    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
-    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
-
-    # If missing, disabled, or identical (e.g. local dev), return unchanged
-    if not ext_host or not int_host or ext_host == int_host:
-        return url
-
-    parsed = urlparse(url)
-
-    # 1. Exact match on netloc
-    if parsed.netloc.lower() == ext_host:
-        return urlunparse(parsed._replace(netloc=int_host))
-
-    # 2. Match hostname when URL has a port not defined in the ENV
-    if parsed.hostname and parsed.hostname.lower() == ext_host:
-        port_suffix = f":{parsed.port}" if parsed.port and ":" not in int_host else ""
-        return urlunparse(parsed._replace(netloc=f"{int_host}{port_suffix}"))
-
-    return url
-
-
-def convert_internal_url_to_external_url(url):
-    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
-    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
-
-    if not ext_host or not int_host or ext_host == int_host:
-        return url
-
-    parsed = urlparse(url)
-
-    # 1. Exact match on netloc
-    if parsed.netloc.lower() == int_host:
-        return urlunparse(parsed._replace(netloc=ext_host))
-
-    # 2. Match hostname when URL has a port not defined in the ENV
-    if parsed.hostname and parsed.hostname.lower() == int_host:
-        port_suffix = f":{parsed.port}" if parsed.port and ":" not in ext_host else ""
-        return urlunparse(parsed._replace(netloc=f"{ext_host}{port_suffix}"))
-
-    return url
