@@ -232,34 +232,52 @@ def get_cached_ledger_organisation(organisation_id):
     return get_organisation(organisation_id).get("data")
 
 
+def _normalize_host(value):
+    """Extract and normalize host/netloc whether given as 'host.com' or 'https://host.com'."""
+    if not value:
+        return None
+    parsed = urlparse(value if "://" in value else f"//{value}")
+    return parsed.netloc.lower()
+
+
 def convert_external_url_to_internal_url(url):
-    suffix = settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX
-    if not suffix:
+    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    # If missing, disabled, or identical (e.g. local dev), return unchanged
+    if not ext_host or not int_host or ext_host == int_host:
         return url
 
     parsed = urlparse(url)
-    hostname = parsed.hostname or ""
 
-    if hostname.endswith(f".{settings.SITE_DOMAIN}") and not hostname.endswith(f"{suffix}.{settings.SITE_DOMAIN}"):
-        new_hostname = hostname.replace(f".{settings.SITE_DOMAIN}", f"{suffix}.{settings.SITE_DOMAIN}")
-        netloc = parsed.netloc.replace(hostname, new_hostname)
-        return urlunparse(parsed._replace(netloc=netloc))
+    # 1. Exact match on netloc
+    if parsed.netloc.lower() == ext_host:
+        return urlunparse(parsed._replace(netloc=int_host))
+
+    # 2. Match hostname when URL has a port not defined in the ENV
+    if parsed.hostname and parsed.hostname.lower() == ext_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in int_host else ""
+        return urlunparse(parsed._replace(netloc=f"{int_host}{port_suffix}"))
 
     return url
 
 
 def convert_internal_url_to_external_url(url):
-    suffix = settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX
-    if not suffix:
+    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    if not ext_host or not int_host or ext_host == int_host:
         return url
 
     parsed = urlparse(url)
-    hostname = parsed.hostname or ""
 
-    target_suffix = f"{suffix}.{settings.SITE_DOMAIN}"
-    if hostname.endswith(target_suffix):
-        new_hostname = hostname[: -len(target_suffix)] + f".{settings.SITE_DOMAIN}"
-        netloc = parsed.netloc.replace(hostname, new_hostname)
-        return urlunparse(parsed._replace(netloc=netloc))
+    # 1. Exact match on netloc
+    if parsed.netloc.lower() == int_host:
+        return urlunparse(parsed._replace(netloc=ext_host))
+
+    # 2. Match hostname when URL has a port not defined in the ENV
+    if parsed.hostname and parsed.hostname.lower() == int_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in ext_host else ""
+        return urlunparse(parsed._replace(netloc=f"{ext_host}{port_suffix}"))
 
     return url
