@@ -44,6 +44,8 @@ required environment variables at run time. Example content:
     SITE_DOMAIN='domain.com.au
     TENURE_SECTION="Section1-0"
     SUPERVISOR_STOP_CMD="supervisorctl stop disturbance-uat"
+    APIARY_EXTERNAL_URL="apiary.dbca.wa.gov.au"
+    APIARY_INTERNAL_URL="apiary-internal.dbca.wa.gov.au"
 
 #### Application Schema
 
