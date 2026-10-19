@@ -127,7 +127,7 @@ def send_apiary_amendment_email_notification(amendment_request, request, complia
 
 
 def send_apiary_reminder_email_notification(compliance):
-    """Used by the management command, therefore have no request object - therefore explicitly defining base_url"""
+    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceReminderNotificationEmail()
 
     url = settings.SITE_URL if settings.SITE_URL else ""
@@ -251,12 +251,13 @@ def send_apiary_due_email_notification(compliance):
 
 
 def send_internal_due_email_notification(compliance):
+    """Recipient: Always internal users"""
+    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceInternalDueNotificationEmail()
     url = settings.SITE_URL
     url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
-    if "-internal" not in url:
-        # add it. This email is for internal staff
-        url = f"-internal.{settings.SITE_DOMAIN}".join(url.split("." + settings.SITE_DOMAIN))
+
+    url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
 
@@ -272,12 +273,13 @@ def send_internal_due_email_notification(compliance):
 
 
 def send_apiary_internal_due_email_notification(compliance):
+    """Recipient: Always internal users"""
+    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceInternalDueNotificationEmail()
     url = settings.SITE_URL
     url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
-    if "-internal" not in url:
-        # add it. This email is for internal staff
-        url = f"-internal.{settings.SITE_DOMAIN}".join(url.split("." + settings.SITE_DOMAIN))
+
+    url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
 
@@ -325,9 +327,12 @@ def send_apiary_compliance_accept_email_notification(compliance, request):
 
 
 def send_external_submit_email_notification(request, compliance):
+    """Recipient: Always external users"""
     email = ComplianceExternalSubmitSendNotificationEmail()
     url = request.build_absolute_uri(reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id}))
-    url = "".join(url.split("-internal"))
+
+    url = convert_internal_url_to_external_url(url)
+
     context = {"compliance": compliance, "submitter": compliance.submitter.get_full_name(), "url": url}
     all_ccs = []
     if compliance.proposal.relevant_applicant.email:
@@ -343,9 +348,12 @@ def send_external_submit_email_notification(request, compliance):
 
 
 def send_apiary_external_submit_email_notification(request, compliance):
+    """Recipient: Always external users"""
     email = ComplianceExternalSubmitSendNotificationEmail()
     url = request.build_absolute_uri(reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id}))
-    url = "".join(url.split("-internal"))
+
+    url = convert_internal_url_to_external_url(url)
+
     context = {"compliance": compliance, "submitter": compliance.submitter.get_full_name(), "url": url}
     all_ccs = []
     if compliance.approval.applicant and compliance.approval.relevant_applicant.email:
@@ -361,11 +369,11 @@ def send_apiary_external_submit_email_notification(request, compliance):
 
 
 def send_submit_email_notification(request, compliance):
+    """Recipient: Always internal users"""
     email = ComplianceSubmitSendNotificationEmail()
     url = request.build_absolute_uri(reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id}))
-    if "-internal" not in url:
-        # add it. This email is for internal staff
-        url = f"-internal.{settings.SITE_DOMAIN}".join(url.split("." + settings.SITE_DOMAIN))
+
+    url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
 
@@ -377,11 +385,11 @@ def send_submit_email_notification(request, compliance):
 
 
 def send_apiary_submit_email_notification(request, compliance):
+    """Recipient: Always internal users"""
     email = ComplianceSubmitSendNotificationEmail()
     url = request.build_absolute_uri(reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id}))
-    if "-internal" not in url:
-        # add it. This email is for internal staff
-        url = f"-internal.{settings.SITE_DOMAIN}".join(url.split("." + settings.SITE_DOMAIN))
+
+    url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
 
