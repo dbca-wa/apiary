@@ -259,6 +259,8 @@ class ComplianceViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
     @action(detail=True,methods=['POST',])
     def delete_document(self, request, *args, **kwargs):
+        if instance.processing_status not in [instance.PROCESSING_STATUS_CHOICES[0][0], instance.PROCESSING_STATUS_CHOICES[1][0]]:
+            raise serializers.ValidationError("Compliance Request is not in the correct processing status: ", instance.processing_status)
         instance = self.get_object()
         doc=request.data.get('document')
         instance.delete_document(request, doc)
@@ -320,7 +322,7 @@ class ComplianceViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = request.data.copy()
+            request_data = {k: v for k, v in request.data.items() if k != 'files'}
             request_data['compliance'] = u'{}'.format(instance.id)
             request_data['staff'] = u'{}'.format(request.user.id)
             serializer = ComplianceCommsSerializer(data=request_data)

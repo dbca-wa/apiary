@@ -18,7 +18,6 @@ SITE_ID = 1
 DEPT_DOMAINS = env("DEPT_DOMAINS", ["dpaw.wa.gov.au", "dbca.wa.gov.au"])
 SUPERVISOR_STOP_CMD = env("SUPERVISOR_STOP_CMD")
 SYSTEM_MAINTENANCE_WARNING = env("SYSTEM_MAINTENANCE_WARNING", 24)  # hours
-DISABLE_EMAIL = env("DISABLE_EMAIL", False)
 SHOW_DEBUG_TOOLBAR = env("SHOW_DEBUG_TOOLBAR", False)
 MEDIA_APP_DIR = env("MEDIA_APP_DIR", "das")
 MEDIA_APIARY_DIR = env("MEDIA_APIARY_DIR", "apiary")
@@ -31,6 +30,21 @@ SHOW_API_ROOT = env("SHOW_API_ROOT", False)
 SSO_SETTING_URL = env("SSO_SETTING_URL", "")
 PRIVACY_POLICY_URL = env("PRIVACY_POLICY_URL", "")
 TIME_ZONE = "Australia/Perth"
+
+SYSTEM_NAME = env("SYSTEM_NAME", "Apiary System")
+SYSTEM_NAME_SHORT = env("SYSTEM_NAME_SHORT", "Apiary")
+SITE_PREFIX = env("SITE_PREFIX")
+SITE_DOMAIN = env("SITE_DOMAIN")
+
+# Email related settings
+DISABLE_EMAIL = env("DISABLE_EMAIL", False)
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", SYSTEM_NAME_SHORT.lower() + "@" + SITE_DOMAIN).lower()
+EMAIL_DELIVERY = env("EMAIL_DELIVERY", "off")
+EMAIL_FROM = env("EMAIL_FROM", "no-reply@" + SITE_DOMAIN).lower()
+EMAIL_INSTANCE = env("EMAIL_INSTANCE", "DEV")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@" + SITE_DOMAIN).lower()
+CRON_EMAIL = env("CRON_EMAIL", "cron@" + SITE_DOMAIN).lower()
+EMAIL_FROM = DEFAULT_FROM_EMAIL
 
 INSTALLED_APPS += [
     "reversion",
@@ -117,11 +131,6 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = None
 STATIC_URL = "/static/"
 
 # Department details
-SYSTEM_NAME = env("SYSTEM_NAME", "Apiary System")
-SYSTEM_NAME_SHORT = env("SYSTEM_NAME_SHORT", "Apiary")
-SITE_PREFIX = env("SITE_PREFIX")
-SITE_DOMAIN = env("SITE_DOMAIN")
-SUPPORT_EMAIL = env("SUPPORT_EMAIL", SYSTEM_NAME_SHORT.lower() + "@" + SITE_DOMAIN).lower()
 DEP_URL = env("DEP_URL", "www." + SITE_DOMAIN)
 DEP_PHONE = env("DEP_PHONE", "(08) 9219 9000")
 DEP_PHONE_SUPPORT = env("DEP_PHONE_SUPPORT", "(08) 9219 9000")
@@ -131,8 +140,6 @@ DEP_NAME = env("DEP_NAME", "Department of Biodiversity, Conservation and Attract
 DEP_NAME_SHORT = env("DEP_NAME_SHORT", "DBCA")
 SITE_URL = env("SITE_URL", "https://" + ".".join([SITE_PREFIX, SITE_DOMAIN]).strip("."))
 PUBLIC_URL = env("PUBLIC_URL", SITE_URL)
-EMAIL_FROM = env("EMAIL_FROM", "no-reply@" + SITE_DOMAIN).lower()
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "no-reply@" + SITE_DOMAIN).lower()
 APIARY_ADMIN_GROUP = "Apiary Admin"
 APIARY_PAYMENTS_OFFICERS_GROUP = "Apiary Payments Officers"
 APPROVED_APIARY_EXTERNAL_USERS_GROUP = env("APPROVED_APIARY_EXTERNAL_USERS_GROUP", "Apiary Approved External Users")
@@ -188,7 +195,7 @@ GEOCODING_ADDRESS_SEARCH_TOKEN = env("GEOCODING_ADDRESS_SEARCH_TOKEN", "ACCESS_T
 RESTRICTED_RADIUS = 3000  # unit: [m]
 DBCA_ABN = "38 052 249 024"
 if env("CONSOLE_EMAIL_BACKEND", False):
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    EMAIL_BACKEND = "wagov_utils.components.utils.email_backend.EmailBackend"
 
 if SHOW_DEBUG_TOOLBAR:
 
