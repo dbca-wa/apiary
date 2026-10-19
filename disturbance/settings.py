@@ -284,8 +284,8 @@ if len(GIT_COMMIT_HASH) == 0:
     GIT_COMMIT_HASH = os.popen("cat /app/git_hash").read()
 APPLICATION_VERSION = env("APPLICATION_VERSION", "1.0.0") + "-" + GIT_COMMIT_HASH[:7]
 
-APIARY_EXTERNAL_URL = env("APIARY_EXTERNAL_URL", "External url not configured")
-APIARY_INTERNAL_URL = env("APIARY_INTERNAL_URL", "Internal url not configured")
+APIARY_EXTERNAL_URL = env("APIARY_EXTERNAL_URL", "APIARY_EXTERNAL_URL not configured")
+APIARY_INTERNAL_URL = env("APIARY_INTERNAL_URL", "APIARY_INTERNAL_URL not configured")
 SESSION_ENGINE = "django.contrib.sessions.backends.file"
 if env("EMAIL_INSTANCE") is not None and env("EMAIL_INSTANCE", "") != "PROD":
     SESSION_FILE_PATH = env("SESSION_FILE_PATH", BASE_DIR + "/session_store/")
