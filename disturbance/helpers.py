@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse, urlunparse
 
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -232,22 +233,33 @@ def get_cached_ledger_organisation(organisation_id):
 
 
 def convert_external_url_to_internal_url(url):
-    if not settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX:
+    suffix = settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX
+    if not suffix:
         return url
 
-    if settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX not in url:
-        # Add the internal subdomain suffix to the url
-        url = f"{settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX}.{settings.SITE_DOMAIN}".join(
-            url.split("." + settings.SITE_DOMAIN)
-        )
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    if hostname.endswith(f".{settings.SITE_DOMAIN}") and not hostname.endswith(f"{suffix}.{settings.SITE_DOMAIN}"):
+        new_hostname = hostname.replace(f".{settings.SITE_DOMAIN}", f"{suffix}.{settings.SITE_DOMAIN}")
+        netloc = parsed.netloc.replace(hostname, new_hostname)
+        return urlunparse(parsed._replace(netloc=netloc))
+
     return url
 
 
 def convert_internal_url_to_external_url(url):
-    if not settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX:
+    suffix = settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX
+    if not suffix:
         return url
 
-    if settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX in url:
-        # remove '-internal'. This email is for external submitters
-        url = "".join(url.split(settings.SITE_SUBDOMAIN_INTERNAL_SUFFIX))
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    target_suffix = f"{suffix}.{settings.SITE_DOMAIN}"
+    if hostname.endswith(target_suffix):
+        new_hostname = hostname[: -len(target_suffix)] + f".{settings.SITE_DOMAIN}"
+        netloc = parsed.netloc.replace(hostname, new_hostname)
+        return urlunparse(parsed._replace(netloc=netloc))
+
     return url
