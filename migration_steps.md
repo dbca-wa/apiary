@@ -59,3 +59,11 @@ This will allow users to upload the most common file extensions: .pdf, .jpg, .jp
 ```
 ./manage.py loaddata disturbance/fixtures/file_extension_whitelist.json
 ```
+### 3. Make sure any important ENVs are configured
+
+ENVs required for converting urls in email between internal externa:
+
+```
+APIARY_EXTERNAL_URL=<appropriate url depending on environment>
+APIARY_INTERNAL_URL=<appropriate url depending on environment>
+```
