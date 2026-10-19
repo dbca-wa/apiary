@@ -61,7 +61,7 @@ This will allow users to upload the most common file extensions: .pdf, .jpg, .jp
 ```
 ### 3. Make sure any important ENVs are configured
 
-ENVs required for converting urls in email between internal externa:
+ENVs required for converting urls in email between internal and external:
 
 ```
 APIARY_EXTERNAL_URL=<appropriate url depending on environment> e.g. apiary.dbca.wa.gov.au
