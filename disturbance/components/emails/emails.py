@@ -1,22 +1,10 @@
 import logging
 
-import six
-from confy import env
-from django.conf import settings
-from django.template import Template
 from wagov_utils.components.utils.email import (
     TemplateEmailBase as WAGovUtilsTemplateEmailBase,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _render(template, context):
-    if isinstance(context, dict):
-        context.update({"settings": settings})
-    if isinstance(template, six.string_types):
-        template = Template(template)
-    return template.render(context)
 
 
 class TemplateEmailBase(WAGovUtilsTemplateEmailBase):
@@ -31,7 +19,6 @@ class TemplateEmailBase(WAGovUtilsTemplateEmailBase):
         for email in filtered_emails:
             # Send the email!
             self.send(email, context=context)
-
 
 
 class ExportReportEmail(TemplateEmailBase):
