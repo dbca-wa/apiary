@@ -158,11 +158,7 @@ class ProposalFilterBackend(DatatablesFilterBackend):
         search_text = request.GET.get("search[value]", "")
         total_count = queryset.count()
 
-        try:
-            super_queryset = super().filter_queryset(request, queryset, view)
-        except Exception as e:
-            print(e)
-            super_queryset = queryset.none()  # Fallback to prevent UnboundLocalError
+        super_queryset = super().filter_queryset(request, queryset, view)
 
         if search_text:
             search_text = search_text.lower()
