@@ -528,8 +528,9 @@ class Document(SanitiseFileMixin):
 
     @property
     def path(self):
-        # return self.file.path
-        return self._file.path
+        if self._file:
+            return self._file.path
+        return ""
 
     @property
     def filename(self):
