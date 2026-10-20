@@ -182,19 +182,43 @@ class ProposalFilterBackend(DatatablesFilterBackend):
 
             organisation_ids = list(Organisation.objects.filter(property_cache__name__icontains=search_text))
 
-            search_text_app_ids = Proposal.objects.values("id").filter(
-                Q(proxy_applicant_id__in=email_user_ids)
-                | Q(submitter_id__in=email_user_ids)
-                | Q(assigned_officer_id__in=email_user_ids)
-                | Q(applicant_id__in=organisation_ids)
-            )
-
             super_ids = super_queryset.values_list("id", flat=True)
 
-            if queryset.model in (Referral, Compliance):
-                queryset = queryset.filter(Q(id__in=super_ids) | Q(proposal_id__in=search_text_app_ids)).distinct()
+            if queryset.model is Referral:
+                search_text_app_ids = Proposal.objects.values("id").filter(
+                    Q(proxy_applicant_id__in=email_user_ids)
+                    | Q(submitter_id__in=email_user_ids)
+                    | Q(applicant_id__in=organisation_ids)
+                )
+                queryset = queryset.filter(
+                    Q(id__in=super_ids)
+                    | Q(apiary_referral__assigned_officer_id__in=email_user_ids)
+                    | Q(proposal_id__in=search_text_app_ids)
+                ).distinct()
+
+            elif queryset.model is Compliance:
+                search_text_app_ids = Proposal.objects.values("id").filter(
+                    Q(proxy_applicant_id__in=email_user_ids)
+                    | Q(submitter_id__in=email_user_ids)
+                    | Q(applicant_id__in=organisation_ids)
+                )
+                queryset = queryset.filter(
+                    Q(id__in=super_ids)
+                    | Q(assigned_to_id__in=email_user_ids)
+                    | Q(proposal_id__in=search_text_app_ids)
+                ).distinct()
+
             else:
-                queryset = queryset.filter(Q(id__in=super_ids) | Q(id__in=search_text_app_ids)).distinct()
+                search_text_app_ids = Proposal.objects.values("id").filter(
+                    Q(proxy_applicant_id__in=email_user_ids)
+                    | Q(submitter_id__in=email_user_ids)
+                    | Q(assigned_officer_id__in=email_user_ids)
+                    | Q(applicant_id__in=organisation_ids)
+                )
+                queryset = queryset.filter(
+                    Q(id__in=super_ids)
+                    | Q(id__in=search_text_app_ids)
+                ).distinct()
 
         application_type = request.GET.get("application_type")
         if application_type and not application_type.lower() == "all":
