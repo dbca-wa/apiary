@@ -215,22 +215,8 @@ export default {
             },
             name: "proposal__submitter__email",
             defaultContent: "",
+            orderable: false,
           },
-          /*
-                    {
-                        data: "applicant",
-                        mRender:function (data,type,full) {
-                            if (data) {
-                                return `${data}`;
-                            } else if (full.proposal_proxy_applicant) {
-                                return full.proposal_proxy_applicant.name;
-                            } else {
-                                return '';
-                            }
-                        },
-                        name: "proposal__applicant__organisation__name",
-                    },
-                    */
           {
             data: "relevant_applicant_name",
             name: "proposal__applicant__organisation__name",
