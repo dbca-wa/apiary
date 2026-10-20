@@ -215,6 +215,7 @@ export default {
             },
             name: "proposal__submitter__email",
             defaultContent: "",
+            searchable: false,
           },
           /*
                     {
@@ -235,6 +236,7 @@ export default {
             data: "relevant_applicant_name",
             name: "proposal__applicant__organisation__name",
             defaultContent: "",
+            searchable: false, // handles by filter_queryset override method - class ProposalFilterBackend
           },
           {
             data: "processing_status",
@@ -278,9 +280,15 @@ export default {
             name: "",
             defaultContent: "",
           },
-          { data: "can_be_processed", visible: false, defaultContent: "" },
+          {
+            data: "can_be_processed",
+            visible: false,
+            searchable: false,
+            defaultContent: "",
+          },
           {
             data: "proposal_lodgement_number",
+            name: "proposal__lodgement_number",
             visible: false,
             defaultContent: "",
           },
