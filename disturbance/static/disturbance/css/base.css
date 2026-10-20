@@ -83,6 +83,9 @@
 
 .popover {
     max-width: 100%;
+    --bs-popover-zindex: 999999 !important;
+    z-index: 999999 !important;
+    /* higher than modal (1055) */
 }
 
 .btn-margin {
