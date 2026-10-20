@@ -98,13 +98,10 @@ export default {
       pBody: "pBody" + uuid(),
       datatable_id: "proposal-datatable-" + uuid(),
       select2Applied: false,
-      // Filters for Proposals
       filterProposalRegion: [],
       filterProposalActivity: "All",
       filterProposalApplicationType: "All",
       filterProposalStatus: "All",
-      // filterProposalLodgedFrom: '',
-      // filterProposalLodgedTo: '',
       proposal_lodged_from: "",
       proposal_lodged_to: "",
       filterProposalSubmitter: "All",
@@ -114,7 +111,6 @@ export default {
       proposal_applicationTypes: [],
       proposal_regions: [],
       proposal_submitters: [],
-      //proposal_headers:["Number","Region","Activity","Title","Submitter","Proponent","Status","Lodged on","Action","Template Group"],
       proposal_options: {
         customProposalSearch: true,
         tableID: "proposal-datatable-" + uuid(),
@@ -149,9 +145,6 @@ export default {
           // adding extra GET params for Custom filtering
           data: function (d) {
             d.regions = vm.filterProposalRegion.join();
-            //d.processing_status = vm.filterProposalStatus;
-            // d.date_from = vm.filterProposalLodgedFrom != '' && vm.filterProposalLodgedFrom != null ? moment(vm.filterProposalLodgedFrom, 'DD/MM/YYYY').format('YYYY-MM-DD'): '';
-            // d.date_to = vm.filterProposalLodgedTo != '' && vm.filterProposalLodgedTo != null ? moment(vm.filterProposalLodgedTo, 'DD/MM/YYYY').format('YYYY-MM-DD'): '';
             d.date_from =
               vm.proposal_lodged_from != "" && vm.proposal_lodged_from != null
                 ? moment(vm.proposal_lodged_from, "YYYY-MM-DD").format(
@@ -196,7 +189,6 @@ export default {
           {
             data: "activity",
             name: "proposal__activity",
-            //searchable: false, // handles by filter_queryset override method - class ProposalFilterBackend
             defaultContent: "",
           },
           {
@@ -417,7 +409,6 @@ export default {
           }
           const filter_list_ref = await response.json();
           vm.proposal_regions = filter_list_ref.regions;
-          //vm.proposal_districts = response.body.districts;
           vm.proposal_activityTitles = filter_list_ref.application_types;
           vm.proposal_submitters = filter_list_ref.submitters;
           vm.proposal_status = filter_list_ref.processing_status_choices;
@@ -535,15 +526,12 @@ export default {
     });
     this.$nextTick(() => {
       vm.addEventListeners();
-      //vm.initialiseSearch();
     });
   },
   updated: function () {
     this.$nextTick(() => {
       this.initialiseSearch();
-      //this.addEventListeners();
     });
   },
 };
 </script>
-<style scoped></style>
