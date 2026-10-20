@@ -189,7 +189,12 @@ class ProposalFilterBackend(DatatablesFilterBackend):
                 | Q(applicant_id__in=organisation_ids)
             )
 
-            queryset = queryset.filter(id__in=search_text_app_ids).distinct() | super_queryset
+            super_ids = super_queryset.values_list("id", flat=True)
+
+            if queryset.model in (Referral, Compliance):
+                queryset = queryset.filter(Q(id__in=super_ids) | Q(proposal_id__in=search_text_app_ids)).distinct()
+            else:
+                queryset = queryset.filter(Q(id__in=super_ids) | Q(id__in=search_text_app_ids)).distinct()
 
         application_type = request.GET.get("application_type")
         if application_type and not application_type.lower() == "all":
