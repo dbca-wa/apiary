@@ -301,7 +301,11 @@ class ApprovalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     @basic_exception_handler
     def temporary_use(self, request, *args, **kwargs):
         instance = self.get_object()
-        qs = instance.proposalapiarytemporaryuse_set.select_related("proposal").prefetch_related("temporary_use_apiary_sites").all()
+        qs = (
+            instance.proposalapiarytemporaryuse_set.select_related("proposal")
+            .prefetch_related("temporary_use_apiary_sites")
+            .all()
+        )
         qs = qs.exclude(proposal__processing_status=Proposal.PROCESSING_STATUS_DISCARDED)
         serializer = ProposalApiaryTemporaryUseSerializer(qs, many=True)
         return Response(serializer.data)
@@ -489,7 +493,7 @@ class ApprovalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     def add_comms_log(self, request, *args, **kwargs):
         with transaction.atomic():
             instance = self.get_object()
-            request_data = {k: v for k, v in request.data.items() if k != 'files'}
+            request_data = {k: v for k, v in request.data.items() if k != "files"}
             request_data["approval"] = f"{instance.id}"
             request_data["staff"] = f"{request.user.id}"
             serializer = ApprovalLogEntrySerializer(data=request_data)
@@ -499,11 +503,13 @@ class ApprovalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
             # Save the files
             for f in request.FILES.getlist("files"):
-                document = comms.documents.create()
-                document.check_file(f)
-                document.name = str(f)
-                document._file = f
-                document.save()
+                doc_model = comms.documents.model
+                temp_doc = doc_model()
+                temp_doc.check_file(f)
+                comms.documents.create(
+                    name=str(f),
+                    _file=f,
+                )
 
             return Response(serializer.data)
 
