@@ -213,6 +213,7 @@ export default {
             data: "relevant_applicant_name",
             name: "proposal__applicant__organisation__name",
             defaultContent: "",
+            orderable: false,
           },
           {
             data: "processing_status",
