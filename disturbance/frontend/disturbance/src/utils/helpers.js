@@ -363,6 +363,7 @@ export default {
             result += `<a class="mx-0 ps-1 pe-0" href="javascript://"
                 role="button"
                 data-bs-toggle="popover"
+                data-bs-container=".modal"
                 data-bs-trigger="${this.escapeAttr(trigger)}"
                 data-bs-placement="top"
                 data-bs-html="true"
@@ -375,7 +376,17 @@ export default {
         $(cell)
             .find('[data-bs-toggle="popover"]')
             .each(function () {
-                new bootstrap.Popover(this);
+                // Dispose any previous instance before re-creating
+                const existing = bootstrap.Popover.getInstance(this);
+                if (existing) existing.dispose();
+
+                new bootstrap.Popover(this, {
+                    container: 'body',
+                    // Tells Popper to position relative to the viewport, bypassing table clipping
+                    popperConfig: {
+                        strategy: 'fixed',
+                    },
+                });
             });
     },
     enablePopovers: function () {
