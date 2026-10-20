@@ -499,11 +499,13 @@ class ApprovalViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
 
             # Save the files
             for f in request.FILES.getlist("files"):
-                document = comms.documents.create()
-                document.check_file(f)
-                document.name = str(f)
-                document._file = f
-                document.save()
+                doc_model = comms.documents.model
+                temp_doc = doc_model()
+                temp_doc.check_file(f)
+                comms.documents.create(
+                    name=str(f),
+                    _file=f,
+                )
 
             return Response(serializer.data)
 
