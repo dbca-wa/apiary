@@ -192,52 +192,54 @@ export default {
     }
     return error_str;
   },
-  apiVueResourceError: async function (resp) {
+    apiVueResourceError: async function (resp) {
     let body;
     try {
-      body = await resp.clone().json();
+        body = await resp.clone().json();
     } catch {
-      try {
+        try {
         body = await resp.text();
-      } catch {
+        } catch {
         body = "";
-      }
+        }
     }
 
     let error_str = "";
-    let text;
 
-    if (resp.status === 400) {
-      if (Array.isArray(body)) {
-        text = body[0];
-      } else if (typeof body === "object" && body !== null) {
-        text = body;
-      } else {
-        text = body;
-      }
+    if (resp.status === 404) {
+        error_str = "The resource you are looking for does not exist.";
+    } else if (body) {
+        let text = Array.isArray(body) ? body[0] : body;
 
-      if (typeof text === "object" && text !== null) {
-        if (Object.prototype.hasOwnProperty.call(text, "non_field_errors")) {
-          const first = text.non_field_errors && text.non_field_errors[0];
-          let cleaned = unwrapErrorDetail(
-            typeof first === "string" ? first : String(first || ""),
-          );
-          cleaned = cleaned.replace(/[[\]"]/g, "").replace(/^'"['"]$/, "$1");
-          error_str = cleaned;
+        if (typeof text === "object" && text !== null) {
+        if (Array.isArray(text.non_field_errors) && text.non_field_errors.length > 0) {
+            const first = text.non_field_errors[0];
+            let cleaned = typeof unwrapErrorDetail === "function" 
+            ? unwrapErrorDetail(first) 
+            : String(first || "");
+            error_str = String(cleaned).replace(/[[\]"]/g, "").trim();
+        } else if (text.detail) {
+            // Standard Django/DRF exception detail
+            error_str = typeof text.detail === "string" ? text.detail : JSON.stringify(text.detail);
         } else {
-          error_str = JSON.stringify(text);
+            error_str = JSON.stringify(text);
         }
-      } else if (typeof text === "string") {
-        let cleaned = unwrapErrorDetail(text);
-        cleaned = cleaned.replace(/[[\]"]/g, "").replace(/^'"['"]$/, "$1");
-        error_str = cleaned;
-      }
-    } else if (resp.status === 404) {
-      error_str = "The resource you are looking for does not exist.";
+        } else if (typeof text === "string") {
+        let cleaned = typeof unwrapErrorDetail === "function" 
+            ? unwrapErrorDetail(text) 
+            : text;
+        error_str = String(cleaned).replace(/[[\]"]/g, "").trim();
+        }
     }
+
+    // Fallback so it's never an empty string on error
+    if (!error_str) {
+        error_str = resp.statusText || `Request failed with status ${resp.status}`;
+    }
+
     console.log(error_str);
     return error_str;
-  },
+    },
 
   /**
    * Universal error parser for our vue 3 / fetch setup.
