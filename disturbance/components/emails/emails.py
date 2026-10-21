@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class TemplateEmailBase(WAGovUtilsTemplateEmailBase):
     subject = ""
-    html_template = "boranga/emails/base_email.html"
+    html_template = "disturbance/emails/apiary_base_email.html"
     # txt_template can be None, in this case a 'tag-stripped' version of the html will be sent. (see send)
-    txt_template = "boranga/emails/base-email.txt"
+    txt_template = "disturbance/emails/apiary_base_email.txt"
 
     def send_to_user(self, users, context=None):
         filtered_emails = {u.email for u in users if hasattr(u, "email")}

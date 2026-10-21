@@ -24,12 +24,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"boranga/settings.py" = ["F405", "E402"]
+"disturbance/settings.py" = ["F405", "E402"]
 # F821: ruff false-positive for closure variables in nested functions
-"boranga/components/data_migration/handlers/occurrence_reports.py" = ["F821"]
+"disturbance/components/data_migration/handlers/occurrence_reports.py" = ["F821"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["boranga", "config"]
+known-first-party = ["disturbance", "config"]
 section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
 
 [tool.ruff.format]
