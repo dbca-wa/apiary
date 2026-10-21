@@ -17,9 +17,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install --no-install-recommends -y \
-    g++ \
-    gnupg \
-    libgdal-dev && \
+    gnupg && \
+    vim \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g 5000 oim && useradd -g 5000 -u 5000 oim -s /bin/bash -d /app && \
