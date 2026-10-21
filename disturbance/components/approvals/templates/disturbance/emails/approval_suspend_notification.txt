@@ -1,4 +1,4 @@
-{%  extends 'disturbance/emails/base_email.txt' %}
+{%  extends 'disturbance/emails/apiary_base_email.txt' %}
 
 {%  block content %}
 	{% if future_suspend %}
