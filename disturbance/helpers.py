@@ -4,53 +4,149 @@ from urllib.parse import urlparse, urlunparse
 # These functionare here to avoid circular import
 
 
-def _normalize_host(value):
-    """Extract and normalize host/netloc whether given as 'host.com' or 'https://host.com'."""
+def _normalize_url_parts(value):
+    """Extract (scheme, netloc) whether given as 'host.com', 'https://host.com',
+
+    'localhost:8000', or 'http://localhost:8000'.
+    Ignores placeholder strings like 'APIARY_INTERNAL_URL not configured'.
+    """
     if not value:
-        return None
-    parsed = urlparse(value if "://" in value else f"//{value}")
-    return parsed.netloc.lower()
+        return None, None
+
+    val_str = str(value).strip()
+
+    # Treat empty, "none", "not configured", or strings with spaces as unconfigured
+    if val_str.lower() in ("none", "") or "not configured" in val_str.lower() or " " in val_str:
+        return None, None
+
+    parsed = urlparse(val_str if "://" in val_str else f"//{val_str}")
+    netloc = parsed.netloc.lower()
+    scheme = parsed.scheme.lower() if parsed.scheme else None
+
+    if not scheme:
+        # Default to http for local dev / cluster local domains, otherwise https
+        scheme = "http" if ("localhost" in netloc or "127.0.0.1" in netloc or ".local" in netloc) else "https"
+
+    return scheme, netloc
+
+
+def _prepare_url(url, ext_host, int_host):
+    """Disambiguate schemeless host URLs from true relative paths:
+
+    - 'apiary-dev.../path' -> '//apiary-dev.../path' (recognized as netloc)
+    - '/internal/path'     -> '/internal/path'        (recognized as path)
+    - 'internal/path'      -> '/internal/path'        (recognized as path)
+    """
+    if not url:
+        return ""
+
+    url = url.strip()
+
+    # 1. Already has scheme or protocol-relative slashes
+    if "://" in url or url.startswith("//"):
+        return url
+
+    # 2. True relative path with leading slash
+    if url.startswith("/"):
+        return url
+
+    # 3. Schemeless domain URL (e.g. 'apiary-dev.dbca.wa.gov.au/path')
+    lower_url = url.lower()
+    if (ext_host and lower_url.startswith(ext_host)) or (int_host and lower_url.startswith(int_host)):
+        return f"//{url}"
+
+    # 4. Relative path missing a leading slash (e.g. 'internal/proposal/1234')
+    return f"/{url}"
 
 
 def convert_external_url_to_internal_url(url):
-    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
-    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+    from django.conf import settings  # Prevents circular imports
 
-    # If missing, disabled, or identical (e.g. local dev), return unchanged
-    if not ext_host or not int_host or ext_host == int_host:
+    ext_scheme, ext_host = _normalize_url_parts(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_scheme, int_host = _normalize_url_parts(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    target_host = int_host or ext_host
+    target_scheme = int_scheme or ext_scheme or "https"
+
+    if not target_host or not url:
         return url
 
-    parsed = urlparse(url)
+    # Fix schemeless domains before urlparse sees them
+    cleaned_url = _prepare_url(url, ext_host, int_host)
+    parsed = urlparse(cleaned_url)
 
-    # 1. Exact match on netloc
-    if parsed.netloc.lower() == ext_host:
-        return urlunparse(parsed._replace(netloc=int_host))
+    # 1. True relative path (e.g. '/internal/proposal/1234')
+    if not parsed.netloc:
+        path = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
+        return urlunparse(
+            (
+                target_scheme,
+                target_host,
+                path,
+                parsed.params,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
 
-    # 2. Match hostname when URL has a port not defined in the ENV
-    if parsed.hostname and parsed.hostname.lower() == ext_host:
-        port_suffix = f":{parsed.port}" if parsed.port and ":" not in int_host else ""
-        return urlunparse(parsed._replace(netloc=f"{int_host}{port_suffix}"))
+    # 2. Already internal -> ensure it has a scheme and return
+    if int_host and (parsed.netloc.lower() == int_host or (parsed.hostname and parsed.hostname.lower() == int_host)):
+        return urlunparse(parsed._replace(scheme=target_scheme)) if not parsed.scheme else url
+
+    # 3. Match external netloc -> swap to internal
+    if ext_host and parsed.netloc.lower() == ext_host:
+        return urlunparse(parsed._replace(scheme=target_scheme, netloc=target_host))
+
+    # 4. Match external hostname with custom port
+    if ext_host and parsed.hostname and parsed.hostname.lower() == ext_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in target_host else ""
+        return urlunparse(parsed._replace(scheme=target_scheme, netloc=f"{target_host}{port_suffix}"))
 
     return url
 
 
 def convert_internal_url_to_external_url(url):
-    ext_host = _normalize_host(getattr(settings, "APIARY_EXTERNAL_URL", None))
-    int_host = _normalize_host(getattr(settings, "APIARY_INTERNAL_URL", None))
+    from django.conf import settings  # Prevents circular imports
 
-    if not ext_host or not int_host or ext_host == int_host:
+    ext_scheme, ext_host = _normalize_url_parts(getattr(settings, "APIARY_EXTERNAL_URL", None))
+    int_scheme, int_host = _normalize_url_parts(getattr(settings, "APIARY_INTERNAL_URL", None))
+
+    target_host = ext_host or int_host
+    target_scheme = ext_scheme or int_scheme or "https"
+
+    if not target_host or not url:
         return url
 
-    parsed = urlparse(url)
+    # Fix schemeless domains before urlparse sees them
+    cleaned_url = _prepare_url(url, ext_host, int_host)
+    parsed = urlparse(cleaned_url)
 
-    # 1. Exact match on netloc
-    if parsed.netloc.lower() == int_host:
-        return urlunparse(parsed._replace(netloc=ext_host))
+    # 1. True relative path (e.g. '/external/proposal/1234')
+    if not parsed.netloc:
+        path = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
+        return urlunparse(
+            (
+                target_scheme,
+                target_host,
+                path,
+                parsed.params,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
 
-    # 2. Match hostname when URL has a port not defined in the ENV
-    if parsed.hostname and parsed.hostname.lower() == int_host:
-        port_suffix = f":{parsed.port}" if parsed.port and ":" not in ext_host else ""
-        return urlunparse(parsed._replace(netloc=f"{ext_host}{port_suffix}"))
+    # 2. Already external -> ensure it has a scheme and return
+    if ext_host and (parsed.netloc.lower() == ext_host or (parsed.hostname and parsed.hostname.lower() == ext_host)):
+        return urlunparse(parsed._replace(scheme=target_scheme)) if not parsed.scheme else url
+
+    # 3. Match internal netloc -> swap to external
+    if int_host and parsed.netloc.lower() == int_host:
+        return urlunparse(parsed._replace(scheme=target_scheme, netloc=target_host))
+
+    # 4. Match internal hostname with custom port
+    if int_host and parsed.hostname and parsed.hostname.lower() == int_host:
+        port_suffix = f":{parsed.port}" if parsed.port and ":" not in target_host else ""
+        return urlunparse(parsed._replace(scheme=target_scheme, netloc=f"{target_host}{port_suffix}"))
 
     return url
 
