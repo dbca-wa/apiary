@@ -233,7 +233,7 @@ export default {
                     },
                     {
                         data: 'processing_status',
-                        name: 'proposal__processing_status',
+                        name: 'processing_status',
                         defaultContent: '',
                     },
                     {
