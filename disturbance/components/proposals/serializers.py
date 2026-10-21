@@ -605,7 +605,7 @@ class SendReferralSerializer(serializers.Serializer):
     text = serializers.CharField(allow_blank=True)
 
 class DTReferralSerializer(serializers.ModelSerializer):
-    processing_status = serializers.CharField(source='proposal.get_processing_status_display')
+    processing_status = serializers.CharField(source='get_processing_status_display')
     referral_status = serializers.CharField(source='get_processing_status_display')
     proposal_lodgement_date = serializers.CharField(source='proposal.lodgement_date')
     proposal_lodgement_number = serializers.CharField(source='proposal.lodgement_number')
