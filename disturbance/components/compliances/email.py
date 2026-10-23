@@ -127,13 +127,9 @@ def send_apiary_amendment_email_notification(amendment_request, request, complia
 
 
 def send_apiary_reminder_email_notification(compliance):
-    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceReminderNotificationEmail()
 
-    url = settings.SITE_URL if settings.SITE_URL else ""
-
-    url += reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id})
-
+    url = reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_internal_url_to_external_url(url)
 
     context = {
@@ -169,10 +165,7 @@ def send_internal_reminder_email_notification(compliance):
     """Recipient: Always internal users"""
     email = ComplianceInternalReminderNotificationEmail()
 
-    url = settings.SITE_URL
-
-    url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
-
+    url = reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
@@ -192,10 +185,7 @@ def send_apiary_internal_reminder_email_notification(compliance):
     """Recipient: Always internal users"""
     email = ComplianceInternalReminderNotificationEmail()
 
-    url = settings.SITE_URL
-
-    url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
-
+    url = reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
@@ -215,10 +205,7 @@ def send_apiary_due_email_notification(compliance):
     """Recipient: Always external users"""
     email = ComplianceDueNotificationEmail()
 
-    url = settings.SITE_URL
-
-    url += reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id})
-
+    url = reverse("external-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_internal_url_to_external_url(url)
 
     context = {
@@ -252,11 +239,9 @@ def send_apiary_due_email_notification(compliance):
 
 def send_internal_due_email_notification(compliance):
     """Recipient: Always internal users"""
-    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceInternalDueNotificationEmail()
-    url = settings.SITE_URL
-    url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
 
+    url = reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}
@@ -274,11 +259,9 @@ def send_internal_due_email_notification(compliance):
 
 def send_apiary_internal_due_email_notification(compliance):
     """Recipient: Always internal users"""
-    """Used by the management command, therefore have no request object - therefore explicitly defining url from SITE_URL"""
     email = ComplianceInternalDueNotificationEmail()
-    url = settings.SITE_URL
-    url += reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
 
+    url = reverse("internal-compliance-detail", kwargs={"compliance_pk": compliance.id})
     url = convert_external_url_to_internal_url(url)
 
     context = {"compliance": compliance, "url": url}

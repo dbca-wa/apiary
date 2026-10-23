@@ -544,8 +544,7 @@ def send_assessment_reminder_email_notification(proposal):
     else:
         email = AssessmentReminderSendNotificationEmail()
 
-    url = settings.SITE_URL if settings.SITE_URL else ""
-    url += reverse("internal-proposal-detail", kwargs={"proposal_pk": proposal.id})
+    url = reverse("internal-proposal-detail", kwargs={"proposal_pk": proposal.id})
 
     url = convert_external_url_to_internal_url(url)
 
