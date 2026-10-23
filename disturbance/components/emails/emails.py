@@ -29,3 +29,9 @@ class ExportReportEmail(TemplateEmailBase):
     subject = f"Attached: Apiary - {model_name.capitalize()} Report"
     html_template = "disturbance/emails/report_attached.html"
     txt_template = "disturbance/emails/report_attached.txt"
+
+
+class CronNotificationEmail(TemplateEmailBase):
+    subject = "Apiary - Cronjob"
+    html_template = "disturbance/emails/base_cron.html"
+    txt_template = "disturbance/emails/base_cron.txt"
