@@ -1,0 +1,6 @@
+{% extends 'disturbance/emails/base_email.html' %}
+
+{% block content %}
+    <p>Apiary cron tasks completed. See log output below:</p>
+    <pre style="background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; font-family: monospace;">{{ log_txt }}</pre>
+{% endblock %}
