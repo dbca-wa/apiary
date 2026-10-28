@@ -55,3 +55,4 @@ orjson~=3.11
 django-debug-toolbar~=7.0
 sentry-sdk~=2.67.1
 unoserver~=3.7
+pytz~=2026.5
