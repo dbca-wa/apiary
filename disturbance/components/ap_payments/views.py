@@ -36,11 +36,11 @@ from disturbance.components.ap_payments.utils import (
 )
 
 from disturbance.components.ap_payments.models import ApplicationFee, ApplicationFeeInvoice, AnnualRentalFee
-from ledger_api_client.utils import get_invoice_properties
+from ledger_api_client.utils import get_invoice_properties, validate_booking_and_invoice_references
 from decimal import Decimal
 import requests
 
-from ledger_api_client.ledger_models import Invoice
+from ledger_api_client.ledger_models import Invoice, Basket
 from disturbance.helpers import is_internal, is_in_organisation_contacts
 from disturbance.context_processors import apiary_url
 from rest_framework.views import APIView
@@ -204,6 +204,12 @@ class ApplicationFeeView(TemplateView):
 class SiteTransferApplicationFeeSuccessView(TemplateView):
     template_name = 'disturbance/payment/success_fee.html'
 
+    def valid_token_payment_session(self, request, invoice_reference):
+        if 'token_payment_session' in request.session:
+            basket = Basket.objects.filter(status='Submitted', id=request.session['token_payment_session']).order_by('-id').first()
+            del request.session['token_payment_session']
+            return validate_booking_and_invoice_references(basket.booking_reference, invoice_reference)
+
     def get(self, request, lodgement_number, *args, **kwargs):
         print (" SITE TRANSFER APPLICATION FEE SUCCESS VIEW ")
         proposal = None
@@ -212,18 +218,6 @@ class SiteTransferApplicationFeeSuccessView(TemplateView):
         try:
             proposal = Proposal.objects.get(lodgement_number=lodgement_number)
             print("proposal:",proposal)
-        except Exception as e:
-            print(e)
-            return redirect('home')
-        
-        user = request.user
-        try:
-            user_orgs = [org.id for org in user.disturbance_organisations.all()]
-            if not (
-                is_internal(self.request) or
-                proposal.applicant_id in user_orgs or proposal.submitter == user
-            ):
-                raise PermissionDenied
         except Exception as e:
             print(e)
             return redirect('home')
@@ -242,13 +236,27 @@ class SiteTransferApplicationFeeSuccessView(TemplateView):
             submitter = proposal.submitter
 
             fee_inv = ApplicationFeeInvoice.objects.filter(application_fee=application_fee).order_by('id').last()
-            print("fee_inv",fee_inv)
             if fee_inv and fee_inv.invoice_reference:
                 invoice_ref = fee_inv.invoice_reference
                 invoice = Invoice.objects.filter(reference=invoice_ref).order_by('id').last()
 
+            user = request.user
+            try:
+                try:
+                    user_orgs = [org.id for org in user.disturbance_organisations.all()]
+                except:
+                    user_orgs = []
+                if not (
+                    is_internal(self.request) or
+                    proposal.applicant_id in user_orgs or proposal.submitter == user or
+                    self.valid_token_payment_session(request, invoice_ref)
+                ):
+                    raise PermissionDenied
+            except Exception as e:
+                print(e)
+                return redirect('home')
 
-            if application_fee.payment_type == ApplicationFee.PAYMENT_TYPE_TEMPORARY:
+            if application_fee and application_fee.payment_type == ApplicationFee.PAYMENT_TYPE_TEMPORARY:
                 try:
                     inv = Invoice.objects.get(reference=invoice_ref)
                 except Invoice.DoesNotExist:
@@ -292,6 +300,21 @@ class SiteTransferApplicationFeeSuccessView(TemplateView):
             if ('site_transfer_last_app_invoice' in request.session) and ApplicationFee.objects.filter(id=request.session['site_transfer_last_app_invoice']).exists():
                 application_fee = ApplicationFee.objects.get(id=request.session['site_transfer_last_app_invoice'])
                 proposal = application_fee.proposal
+                user = request.user
+                try:
+                    try:
+                        user_orgs = [org.id for org in user.disturbance_organisations.all()]
+                    except:
+                        user_orgs = []
+                    if not (
+                        is_internal(self.request) or
+                        proposal.applicant_id in user_orgs or proposal.submitter == user
+                    ):
+                        raise PermissionDenied
+                except Exception as e:
+                    print(e)
+                    return redirect('home')         
+                
                 try:
                     if proposal.applicant:
                         recipient = proposal.applicant.email
@@ -496,6 +519,9 @@ class ApplicationFeeSuccessViewPreload(APIView):
             print(e)
             return redirect('home')
 
+        if not validate_booking_and_invoice_references(proposal.lodgement_number, invoice_ref):
+            raise serializers.ValidationError(f"Invoice: {invoice_ref} and Booking Reference: {proposal.lodgement_number} are not part of the same order/basket.")
+
         application_fee = ApplicationFee.objects.filter(proposal=proposal).order_by('id').last()
         print("af application fee",application_fee)
         if not application_fee:
@@ -563,32 +589,48 @@ class ApplicationFeeSuccessViewPreload(APIView):
 class ApplicationFeeSuccessView(TemplateView):
     template_name = 'disturbance/payment/success_fee.html'
 
+    def valid_token_payment_session(self, request, invoice_reference):
+        if 'token_payment_session' in request.session:
+            basket = Basket.objects.filter(status='Submitted', id=request.session['token_payment_session']).order_by('-id').first()
+            del request.session['token_payment_session']
+            return validate_booking_and_invoice_references(basket.booking_reference, invoice_reference)
+
     def get(self, request, *args, **kwargs):
         print("ApplicationFeeSuccessView")
         fee_inv = None
         invoice = None
         submitter = None
 
-        # Get application invoice from session
-        application_fee = get_session_application_invoice(request.session)
-        proposal = application_fee.proposal
-        submitter = proposal.submitter
+        if 'token_payment_session' in request.session:
+            invoice_ref = request.GET.get("invoice", "")
+            fee_inv = ApplicationFeeInvoice.objects.filter(invoice_reference=invoice_ref).order_by('id').last()
+            application_fee = fee_inv.application_fee
+            submitter = proposal.submitter
+        else:
+            # Get application invoice from session
+            application_fee = get_session_application_invoice(request.session)
+            proposal = application_fee.proposal
+            submitter = proposal.submitter
+            fee_inv = ApplicationFeeInvoice.objects.filter(application_fee=application_fee).order_by('id').last()
+            invoice_ref = fee_inv.invoice_reference
 
         user = request.user
         try:
-            user_orgs = [org.id for org in user.disturbance_organisations.all()]
+            try:
+                user_orgs = [org.id for org in user.disturbance_organisations.all()]
+            except:
+                user_orgs = []
             if not (
                 is_internal(self.request) or
-                proposal.applicant_id in user_orgs or proposal.submitter == user
+                proposal.applicant_id in user_orgs or proposal.submitter == user or
+                self.valid_token_payment_session(request, invoice_ref)
             ):
                 raise PermissionDenied
         except Exception as e:
             print(e)
             return redirect('home')
 
-        fee_inv = ApplicationFeeInvoice.objects.filter(application_fee=application_fee).order_by('id').last()
-
-        if application_fee.payment_type == ApplicationFee.PAYMENT_TYPE_TEMPORARY:
+        if application_fee and application_fee.payment_type == ApplicationFee.PAYMENT_TYPE_TEMPORARY:
             # The preload callback (ApplicationFeeSuccessViewPreload) is called server-side by the
             # Ledger Gateway. If it did not run (e.g. APIARY_EXTERNAL_URL not configured so the
             # callback URL was unreachable), we handle the submission here as a fallback.
