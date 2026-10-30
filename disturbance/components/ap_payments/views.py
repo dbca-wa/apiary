@@ -605,6 +605,7 @@ class ApplicationFeeSuccessView(TemplateView):
             invoice_ref = request.GET.get("invoice", "")
             fee_inv = ApplicationFeeInvoice.objects.filter(invoice_reference=invoice_ref).order_by('id').last()
             application_fee = fee_inv.application_fee
+            proposal = application_fee.proposal
             submitter = proposal.submitter
         else:
             # Get application invoice from session

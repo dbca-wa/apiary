@@ -22,9 +22,8 @@ def apiary_url(request):
     checkouthash = None
     if 'payment_pk' in request.session:
         checkouthash =  hashlib.sha256(str(request.session["payment_pk"]).encode('utf-8')).hexdigest()
-        #check for ledger-api-client set checkouthash - if it is remove payment_model and payment_pk session variables and replace checkouthash
+        #check for ledger-api-client set checkouthash - if it is remove payment_pk session variable and replace checkouthash
         if 'token_payment_session' in request.session:
-            del request.session['payment_model']
             del request.session['payment_pk']
 
     if 'token_payment_session' in request.session:
