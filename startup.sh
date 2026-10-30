@@ -16,7 +16,7 @@ if [ "$ENABLE_WEB" == "True" ] || [ "$ENABLE_CRON" == "True" ]; then
         exit 1
     fi
     
-    /opt/libreoffice/program/python -m unoserver.server --executable /opt/libreoffice/program/soffice &
+    PYTHONPATH=/opt/libreoffice/program /opt/libreoffice/program/python -m unoserver.server --executable /opt/libreoffice/program/soffice &
 fi
 
 if [ "$ENABLE_CRON" == "True" ]; then
