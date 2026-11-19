@@ -379,4 +379,13 @@ def get_cached_ledger_organisation(organisation_id):
     Multiple model instances calling this with ID 50
     will only trigger one network call.
     """
-    return get_organisation(organisation_id).get("data")
+    response = get_organisation(organisation_id)
+
+    if not response:
+        logger.warning(
+            "No response returned from ledger for organisation_id=%s",
+            organisation_id,
+        )
+        return None
+
+    return response.get("data")

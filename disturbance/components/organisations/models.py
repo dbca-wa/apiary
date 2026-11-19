@@ -88,14 +88,16 @@ class Organisation(models.Model):
                     "Ledger API returned empty data for organisation_id=%s. The organisation may not exist in the ledger database.",
                     self.organisation_id,
                 )
+                raise ValidationError("Organisation does not exist")
 
             return data
-        except Exception as e:
-            logger.error(
-                "Failed to fetch organisation data for organisation_id=%s: %s",
-                self.organisation_id,
-                e,
-            )
+
+        except ValidationError:
+            # prevents logging validation error as exception, as it is a known error and not unexpected
+            raise
+
+        except Exception:
+            logger.exception("Failed to fetch organisation data for organisation_id=%s", self.organisation_id)
             raise ValidationError("Organisation does not exist")
 
     def __str__(self):
